@@ -1,0 +1,28 @@
+node_modules/
+.pnpm-store/
+.next/
+dist/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+
+.env
+.env.*
+!.env.example
+
+*.log
+.DS_Store
+Thumbs.db
+
+# Local infrastructure data
+.data/
+uploads/
+backups/
+
+# Local agent and IDE state
+.claude/
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
