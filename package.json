@@ -10,9 +10,9 @@
   },
   "scripts": {
     "dev": "corepack pnpm --parallel --filter @family-english/web --filter @family-english/api dev",
-    "build": "corepack pnpm -r --if-present build",
+    "build": "corepack pnpm --filter @family-english/contracts build && corepack pnpm --filter @family-english/domain --filter @family-english/design-system --if-present build && corepack pnpm --filter @family-english/api --filter @family-english/web build",
     "lint": "corepack pnpm -r --if-present lint",
-    "typecheck": "corepack pnpm -r --if-present typecheck",
+    "typecheck": "corepack pnpm --filter @family-english/contracts build && corepack pnpm -r --if-present typecheck",
     "test": "corepack pnpm -r --if-present test",
     "test:e2e": "playwright test",
     "format": "prettier --write .",

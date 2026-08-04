@@ -1,7 +1,7 @@
 import type { HealthResponse } from '@family-english/contracts'
 import { healthResponseSchema } from '@family-english/contracts'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api'
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:3001/api'
 
 export async function getHealth(): Promise<HealthResponse | null> {
   try {

@@ -1,0 +1,12 @@
+:root {
+  --calm-color-background: #f5f3ec;
+  --calm-color-surface: #ffffff;
+  --calm-color-text: #27332f;
+  --calm-color-muted: #5f6f68;
+  --calm-color-accent: #35695a;
+  --calm-color-border: #d8dfda;
+  --calm-color-status: #edf1ef;
+  --calm-color-attention: #8a6b35;
+  --calm-radius-control: 1rem;
+  --calm-target-minimum: 3rem;
+}
