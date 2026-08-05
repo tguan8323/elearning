@@ -35,3 +35,21 @@ export const authenticationErrorSchema = z.object({
 })
 
 export type AuthenticationError = z.infer<typeof authenticationErrorSchema>
+
+export const learnerAvatarIds = ['fox', 'panda', 'dolphin'] as const
+
+export const createLearnerRequestSchema = z.object({
+  nickname: z.string().trim().min(1).max(24),
+  avatarId: z.enum(learnerAvatarIds),
+  pin: z.string().regex(/^\d{6}$/),
+})
+
+export type CreateLearnerRequest = z.infer<typeof createLearnerRequestSchema>
+
+export const learnerProfileSchema = z.object({
+  id: z.string(),
+  nickname: z.string(),
+  avatarId: z.enum(learnerAvatarIds),
+})
+
+export type LearnerProfile = z.infer<typeof learnerProfileSchema>

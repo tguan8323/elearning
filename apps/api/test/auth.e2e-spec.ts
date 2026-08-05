@@ -5,6 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 
 import { AuthController } from '../src/auth/auth.controller'
 import { AuthService } from '../src/auth/auth.service'
+import { ParentSessionService } from '../src/auth/parent-session.service'
 
 describe('parent auth API', () => {
   let app: INestApplication
@@ -21,7 +22,10 @@ describe('parent auth API', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [AuthController],
-      providers: [{ provide: AuthService, useValue: auth }],
+      providers: [
+        { provide: AuthService, useValue: auth },
+        ParentSessionService,
+      ],
     }).compile()
     app = moduleRef.createNestApplication()
     app.setGlobalPrefix('api')

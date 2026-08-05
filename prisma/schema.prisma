@@ -14,9 +14,21 @@ model ParentAccount {
   familySlot      String          @unique @default("primary-family")
   email           String          @unique
   passwordHash String
-  sessions     ParentSession[]
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  sessions        ParentSession[]
+  learner         LearnerProfile?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model LearnerProfile {
+  id         String        @id @default(cuid())
+  parent     ParentAccount @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  parentId   String        @unique
+  nickname   String
+  avatarId   String
+  pinHash    String
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 }
 
 model ParentSession {

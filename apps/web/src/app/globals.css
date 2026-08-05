@@ -98,6 +98,31 @@ h1 {
   font: inherit;
 }
 
+.avatarChoices {
+  display: grid;
+  gap: 0.75rem;
+  border: 1px solid var(--calm-color-border);
+  border-radius: var(--calm-radius-control);
+  padding: 1rem;
+}
+
+.avatarChoices label {
+  min-height: var(--calm-target-minimum);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.avatarChoices input {
+  min-height: auto;
+}
+
+.formHint {
+  margin: 0.25rem 0;
+  color: var(--calm-color-muted);
+  line-height: 1.6;
+}
+
 button {
   min-height: var(--calm-target-minimum);
   border: 0;
