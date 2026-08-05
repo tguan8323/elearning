@@ -14,3 +14,24 @@ export const readinessResponseSchema = z.object({
 })
 
 export type ReadinessResponse = z.infer<typeof readinessResponseSchema>
+
+export const parentLoginRequestSchema = z.object({
+  email: z.string().trim().email(),
+  password: z.string().min(1),
+})
+
+export type ParentLoginRequest = z.infer<typeof parentLoginRequestSchema>
+
+export const parentSessionResponseSchema = z.object({
+  parent: z.object({
+    email: z.string().email(),
+  }),
+})
+
+export type ParentSessionResponse = z.infer<typeof parentSessionResponseSchema>
+
+export const authenticationErrorSchema = z.object({
+  message: z.string(),
+})
+
+export type AuthenticationError = z.infer<typeof authenticationErrorSchema>

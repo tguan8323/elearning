@@ -9,14 +9,16 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: 'corepack pnpm --filter @family-english/api dev',
+      command: 'corepack pnpm --filter @family-english/api build && corepack pnpm --filter @family-english/api start',
       url: 'http://127.0.0.1:3001/api/health',
       reuseExistingServer: true,
+      timeout: 180_000,
     },
     {
       command: 'corepack pnpm --filter @family-english/web dev',
       url: 'http://127.0.0.1:3000',
       reuseExistingServer: true,
+      timeout: 180_000,
     },
   ],
   projects: [

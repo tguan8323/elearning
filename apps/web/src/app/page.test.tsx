@@ -1,23 +1,43 @@
-import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import HomePage from './page'
+vi.mock('next/navigation', () => ({
+  redirect: vi.fn(),
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+}))
+vi.mock('@/lib/api', () => ({ getCurrentParent: vi.fn().mockResolvedValue(null) }))
 
-vi.mock('@/lib/api', () => ({ getHealth: vi.fn() }))
+import LoginPage from './login/page'
 
-import { getHealth } from '@/lib/api'
+describe('LoginPage', () => {
+  afterEach(() => {
+    cleanup()
+    vi.unstubAllGlobals()
+  })
 
-const mockedGetHealth = vi.mocked(getHealth)
+  it('shows parent login without a registration link', async () => {
+    render(await LoginPage())
 
-describe('HomePage', () => {
-  beforeEach(() => mockedGetHealth.mockReset())
+    expect(screen.getByRole('heading', { name: '登录家庭英语教学网站' })).toBeInTheDocument()
+    expect(screen.getByLabelText('家长邮箱')).toBeInTheDocument()
+    expect(screen.getByLabelText('密码')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /注册/ })).not.toBeInTheDocument()
+  })
 
-  it('shows a healthy API connection', async () => {
-    mockedGetHealth.mockResolvedValue({ status: 'ok', service: 'family-english-api' })
+  it('uses the same-origin auth proxy and distinguishes network failures', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new Error('network unavailable'))
+    vi.stubGlobal('fetch', fetchMock)
+    render(await LoginPage())
 
-    render(await HomePage())
+    fireEvent.change(screen.getByLabelText('家长邮箱'), {
+      target: { value: 'parent@example.com' },
+    })
+    fireEvent.change(screen.getByLabelText('密码'), {
+      target: { value: 'password' },
+    })
+    fireEvent.submit(screen.getByRole('button', { name: '登录' }).closest('form')!)
 
-    expect(screen.getByRole('heading', { name: '家庭英语教学网站' })).toBeInTheDocument()
-    expect(screen.getByText('前端与后端连接正常')).toBeInTheDocument()
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/auth/login', expect.any(Object)))
+    expect(await screen.findByRole('alert')).toHaveTextContent('无法连接服务器')
   })
 })

@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "nest start --watch",
+    "dev": "tsx watch src/main.ts",
     "build": "nest build",
     "start": "node dist/main.js",
+    "parent:init": "tsx src/initialize-parent.ts",
     "lint": "eslint src test",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
@@ -17,6 +18,7 @@
     "@nestjs/core": "^11.1.6",
     "@nestjs/platform-express": "^11.1.6",
     "@nestjs/swagger": "^11.2.0",
+    "argon2": "^0.45.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "reflect-metadata": "^0.2.2",
@@ -26,10 +28,12 @@
     "@eslint/js": "^9.34.0",
     "@nestjs/cli": "^11.0.10",
     "@nestjs/testing": "^11.1.6",
+    "@types/express": "^5.0.6",
     "@types/node": "^24.3.0",
     "@types/supertest": "^6.0.3",
     "eslint": "^9.34.0",
     "supertest": "^7.1.4",
+    "tsx": "^4.23.5",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.42.0",
     "vitest": "^3.2.4"

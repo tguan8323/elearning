@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-项目已经进入**工程基线阶段**：需求与课程架构文档保持为实现依据，单仓库中已建立 Next.js 前端、NestJS 后端、共享 TypeScript 包、Prisma 数据层和本地基础设施。当前只有健康检查与工程欢迎页，尚未实现正式教学功能。第一版只服务当前家庭中的一个孩子，不按公共教学平台设计。
+项目已经进入**首个产品闭环阶段**：需求与课程架构文档保持为实现依据，单仓库中已建立 Next.js 前端、NestJS 后端、共享 TypeScript 包、Prisma 数据层和本地基础设施，并提供预建家长账号的安全初始化与登录入口。正式教学功能仍在后续工单中实现。第一版只服务当前家庭中的一个孩子，不按公共教学平台设计。
 
 ## 核心原则
 
@@ -41,10 +41,14 @@ Copy-Item .env.example .env
 corepack pnpm install
 corepack pnpm infra:up
 corepack pnpm db:validate
+corepack pnpm db:migrate
+corepack pnpm --filter @family-english/api parent:init
 corepack pnpm dev
 ```
 
-前端默认访问 `http://localhost:3000`，API 健康检查为 `http://localhost:3001/api/health`，开发环境 Swagger 为 `http://localhost:3001/api/docs`。
+初始化命令只接受交互式终端输入，密码至少 12 个字符且输入时不回显；不要把邮箱或密码写在命令参数、`.env`、源码或日志中。重复初始化不会创建第二个家长账号。项目没有公众注册入口。
+
+前端默认访问 `http://localhost:3000`，API 健康检查为 `http://localhost:3001/api/health`，开发环境 Swagger 为 `http://localhost:3001/api/docs`。浏览器认证请求统一通过前端 `/api` 同源代理转发到后端，避免 `localhost` 与 `127.0.0.1` 混用造成 Cookie 丢失；服务端请求使用 `API_INTERNAL_URL`。
 
 完整验证：
 

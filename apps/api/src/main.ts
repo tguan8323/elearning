@@ -9,10 +9,13 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule)
   const config = app.get(ConfigService)
 
-  const webOrigin = config.get<string>('WEB_ORIGIN') ?? 'http://localhost:3000'
+  const configuredOrigins = config.get<string>('WEB_ORIGIN')
+  const webOrigins = configuredOrigins
+    ? configuredOrigins.split(',').map((origin) => origin.trim())
+    : ['http://localhost:3000', 'http://127.0.0.1:3000']
 
   app.setGlobalPrefix('api')
-  app.enableCors({ origin: webOrigin })
+  app.enableCors({ origin: webOrigins, credentials: true })
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }))
 
   if (config.get('NODE_ENV', 'development') !== 'production') {
