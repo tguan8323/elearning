@@ -60,6 +60,37 @@ describe('AuthService', () => {
     await expect(service.login('parent@example.com', 'wrong')).rejects.toMatchObject({ message: '邮箱或密码不正确' })
   })
 
+  it('rejects an idle session before updating its activity time', async () => {
+    prisma.parentSession.findUnique.mockResolvedValue({
+      id: 'session-1',
+      mode: 'PARENT',
+      revokedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+      lastSeenAt: new Date(Date.now() - 2 * 60 * 60 * 1000 - 1),
+      parent: { id: 'parent-1', email: 'parent@example.com' },
+    })
+
+    await expect(service.getParentForToken('token')).resolves.toBeNull()
+    expect(prisma.parentSession.update).not.toHaveBeenCalled()
+  })
+
+  it('returns mode and refreshes activity for an active session', async () => {
+    prisma.parentSession.findUnique.mockResolvedValue({
+      id: 'session-1',
+      mode: 'LEARNER',
+      revokedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+      lastSeenAt: new Date(),
+      parent: { id: 'parent-1', email: 'parent@example.com' },
+    })
+    prisma.parentSession.update.mockResolvedValue({ id: 'session-1' })
+
+    await expect(service.getParentForToken('token')).resolves.toMatchObject({
+      id: 'parent-1', sessionId: 'session-1', mode: 'LEARNER',
+    })
+    expect(prisma.parentSession.update).toHaveBeenCalled()
+  })
+
   it('creates and revokes a hashed session token', async () => {
     prisma.parentAccount.findUnique.mockResolvedValue({
       id: 'parent-1',
