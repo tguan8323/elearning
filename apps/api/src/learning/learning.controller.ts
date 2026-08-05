@@ -11,6 +11,12 @@ export class LearningController {
     @Inject(ParentSessionService) private readonly sessions: ParentSessionService,
   ) {}
 
+  @Get('practice')
+  async practice(@Req() request: Request) {
+    const session = await this.sessions.requireLearner(request)
+    return this.learning.getPractice(session.id)
+  }
+
   @Get('adaptation')
   async adaptation(@Req() request: Request) {
     const parent = await this.sessions.requireParent(request)

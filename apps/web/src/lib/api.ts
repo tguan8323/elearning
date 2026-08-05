@@ -71,6 +71,16 @@ export async function getLearningPlan(): Promise<{
   } catch { return null }
 }
 
+export async function getPracticeTargets(): Promise<Array<{ id: string; title: string }>> {
+  try {
+    const cookieHeader = (await cookies()).toString()
+    const response = await fetch(`${API_URL}/learning/practice`, {
+      cache: 'no-store', headers: cookieHeader ? { cookie: cookieHeader } : {},
+    })
+    return response.ok ? await response.json() as Array<{ id: string; title: string }> : []
+  } catch { return [] }
+}
+
 export async function getCurrentParent(): Promise<ParentSessionResponse | null> {
   try {
     const cookieHeader = (await cookies()).toString()

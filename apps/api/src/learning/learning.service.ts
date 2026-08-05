@@ -6,6 +6,18 @@ import { PrismaService } from '../database/prisma.service'
 export class LearningService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
+  async getPractice(parentId: string) {
+    const learner = await this.prisma.learnerProfile.findUnique({ where: { parentId }, select: { id: true } })
+    if (!learner) throw new NotFoundException('尚未建立孩子学习身份')
+    const evidence = await this.prisma.learningObservation.findMany({
+      where: { learnerId: learner.id }, select: { targetId: true }, distinct: ['targetId'],
+    })
+    return evidence
+      .map((item) => curriculumTargets.find((target) => target.id === item.targetId))
+      .filter((item) => item !== undefined)
+      .map((item) => ({ id: item.id, title: item.title }))
+  }
+
   async getAdaptation(parentId: string) {
     return this.prisma.familyAdaptation.upsert({
       where: { parentId },
