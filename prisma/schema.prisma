@@ -16,6 +16,7 @@ model ParentAccount {
   passwordHash String
   sessions        ParentSession[]
   learner         LearnerProfile?
+  adaptation      FamilyAdaptation?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 }
@@ -27,6 +28,8 @@ model LearnerProfile {
   nickname   String
   avatarId   String
   pinHash    String
+  sessions   TeachingSession[]
+  observations LearningObservation[]
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
 }
@@ -49,4 +52,53 @@ model ParentSession {
 enum SessionMode {
   PARENT
   LEARNER
+}
+
+model FamilyAdaptation {
+  id                 String        @id @default(cuid())
+  parent             ParentAccount @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  parentId           String        @unique
+  sessionMinutes     Int           @default(15)
+  sessionsPerWeek    Int           @default(5)
+  accent             String        @default("en-US")
+  reducedMotion      Boolean       @default(true)
+  soundEnabled       Boolean       @default(true)
+  interests          String[]
+  excludedThemes     String[]
+  availableMaterials String[]
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+}
+
+model TeachingSession {
+  id           String         @id @default(cuid())
+  clientId     String         @unique
+  learner      LearnerProfile @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  learnerId    String
+  targetId     String
+  targetTitle  String
+  status       String         @default("PLANNED")
+  startedAt    DateTime?
+  endedAt      DateTime?
+  createdAt    DateTime       @default(now())
+  observations LearningObservation[]
+
+  @@index([learnerId, createdAt])
+}
+
+model LearningObservation {
+  id            String          @id @default(cuid())
+  clientId      String          @unique
+  learner       LearnerProfile  @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  learnerId     String
+  session       TeachingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId     String
+  targetId      String
+  outcome       String
+  promptLevel   String?
+  materialVariant String?
+  note          String?
+  observedAt    DateTime        @default(now())
+
+  @@index([learnerId, targetId, observedAt])
 }

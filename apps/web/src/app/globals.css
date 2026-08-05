@@ -163,6 +163,28 @@ h1 {
   text-align: left;
 }
 
+.todayPlan,
+.lessonStep {
+  margin-top: 2rem;
+  border-top: 1px solid var(--calm-color-border);
+  padding-top: 1.5rem;
+}
+
+.todayPlan li,
+.lessonStep p {
+  line-height: 1.7;
+}
+
+.lessonActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.secondaryButton {
+  background: var(--calm-color-muted);
+}
+
 button {
   min-height: var(--calm-target-minimum);
   border: 0;

@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation'
 
-import { getCurrentLearner, getCurrentParent, getSessionMode } from '@/lib/api'
+import { getCurrentLearner, getCurrentParent, getLearningPlan, getSessionMode } from '@/lib/api'
 import { CreateLearnerForm } from './create-learner-form'
 import { LearnerManagement } from './learner-management'
 import { LogoutButton } from './logout-button'
+import { StartLesson } from './start-lesson'
 
 export default async function ParentPage() {
   const mode = await getSessionMode()
@@ -12,6 +13,7 @@ export default async function ParentPage() {
   if (!session) redirect('/login')
 
   const learner = await getCurrentLearner()
+  const plan = learner ? await getLearningPlan() : null
 
   return (
     <main className="shell">
@@ -25,6 +27,18 @@ export default async function ParentPage() {
             <p>昵称：{learner.nickname}</p>
             <p>头像：{learner.avatarId}</p>
             <LearnerManagement learner={learner} />
+            {plan ? (
+              <section className="todayPlan" aria-labelledby="today-title">
+                <p className="eyebrow">今日建议</p>
+                <h2 id="today-title">{plan.target.title}</h2>
+                <p>只引入这一个主要新目标。</p>
+                <h3>准备教具</h3>
+                <ul>{plan.target.materials.map((item) => <li key={item}>{item}</li>)}</ul>
+                <h3>家长可以这样说</h3>
+                <ul>{plan.target.parentScript.map((line) => <li key={line}>{line}</li>)}</ul>
+                <StartLesson target={plan.target} />
+              </section>
+            ) : null}
           </section>
         ) : (
           <section aria-labelledby="learner-title">

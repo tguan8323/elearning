@@ -57,6 +57,20 @@ export async function getLearnerHome(): Promise<LearnerProfile | null> {
   }
 }
 
+export async function getLearningPlan(): Promise<{
+  target: { id: string; title: string; parentScript: string[]; materials: string[] }
+  review: Array<{ id: string; title: string }>
+  upcoming: Array<{ id: string; title: string }>
+} | null> {
+  try {
+    const cookieHeader = (await cookies()).toString()
+    const response = await fetch(`${API_URL}/learning/plan`, {
+      cache: 'no-store', headers: cookieHeader ? { cookie: cookieHeader } : {},
+    })
+    return response.ok ? await response.json() as Awaited<ReturnType<typeof getLearningPlan>> : null
+  } catch { return null }
+}
+
 export async function getCurrentParent(): Promise<ParentSessionResponse | null> {
   try {
     const cookieHeader = (await cookies()).toString()

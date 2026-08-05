@@ -1,3 +1,5 @@
+export * from './curriculum'
+
 export const learningObservationOutcomes = [
   'independent',
   'prompted',
