@@ -5,6 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 
 import { AuthController } from '../src/auth/auth.controller'
 import { AuthService } from '../src/auth/auth.service'
+import { CredentialRateLimitService } from '../src/auth/credential-rate-limit.service'
 import { ParentSessionService } from '../src/auth/parent-session.service'
 
 describe('parent auth API', () => {
@@ -25,6 +26,7 @@ describe('parent auth API', () => {
       providers: [
         { provide: AuthService, useValue: auth },
         ParentSessionService,
+        CredentialRateLimitService,
       ],
     }).compile()
     app = moduleRef.createNestApplication()

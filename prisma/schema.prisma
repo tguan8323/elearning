@@ -36,10 +36,17 @@ model ParentSession {
   tokenHash   String        @unique
   parent      ParentAccount @relation(fields: [parentId], references: [id], onDelete: Cascade)
   parentId    String
+  mode        SessionMode   @default(PARENT)
   expiresAt   DateTime
+  lastSeenAt  DateTime      @default(now())
   revokedAt   DateTime?
   createdAt   DateTime      @default(now())
 
   @@index([parentId])
   @@index([expiresAt])
+}
+
+enum SessionMode {
+  PARENT
+  LEARNER
 }

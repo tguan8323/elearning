@@ -14,6 +14,7 @@ function createPrismaMock() {
     parentSession: {
       create: vi.fn(),
       findUnique: vi.fn(),
+      update: vi.fn(),
       updateMany: vi.fn(),
     },
   }

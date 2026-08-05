@@ -1,4 +1,4 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common'
+import { ForbiddenException, Inject, Injectable, UnauthorizedException } from '@nestjs/common'
 import type { Request } from 'express'
 
 import { AuthService, type ParentSessionIdentity } from './auth.service'
@@ -18,10 +18,26 @@ export class ParentSessionService {
     return cookie ? decodeURIComponent(cookie.slice(PARENT_SESSION_COOKIE.length + 1)) : null
   }
 
-  async requireParent(request: Request): Promise<ParentSessionIdentity> {
+  async requireSession(request: Request): Promise<ParentSessionIdentity> {
     const token = this.readToken(request)
     const parent = token ? await this.auth.getParentForToken(token) : null
     if (!parent) throw new UnauthorizedException(UNAUTHORIZED_MESSAGE)
     return parent
+  }
+
+  async requireParent(request: Request): Promise<ParentSessionIdentity> {
+    const session = await this.requireSession(request)
+    if (session.mode !== 'PARENT') {
+      throw new ForbiddenException('孩子模式不能访问家长功能')
+    }
+    return session
+  }
+
+  async requireLearner(request: Request): Promise<ParentSessionIdentity> {
+    const session = await this.requireSession(request)
+    if (session.mode !== 'LEARNER') {
+      throw new ForbiddenException('请先切换到孩子模式')
+    }
+    return session
   }
 }

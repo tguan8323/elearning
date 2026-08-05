@@ -88,7 +88,8 @@ h1 {
   font-weight: 700;
 }
 
-.authForm input {
+.authForm input,
+.authForm select {
   min-height: var(--calm-target-minimum);
   border: 1px solid var(--calm-color-border);
   border-radius: var(--calm-radius-control);
@@ -121,6 +122,45 @@ h1 {
   margin: 0.25rem 0;
   color: var(--calm-color-muted);
   line-height: 1.6;
+}
+
+.managementStack {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.managementStack details,
+.parentReturn {
+  border-top: 1px solid var(--calm-color-border);
+  padding-top: 1rem;
+}
+
+.managementStack summary,
+.parentReturn summary {
+  min-height: var(--calm-target-minimum);
+  display: flex;
+  align-items: center;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.learnerShell {
+  background: #f3f8f5;
+}
+
+.learnerCard {
+  text-align: center;
+}
+
+.avatarDisplay {
+  margin: 0 0 1rem;
+  font-size: 4rem;
+}
+
+.parentReturn {
+  margin-top: 3rem;
+  text-align: left;
 }
 
 button {

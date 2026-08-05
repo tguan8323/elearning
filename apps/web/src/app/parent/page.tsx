@@ -1,10 +1,13 @@
 import { redirect } from 'next/navigation'
 
-import { getCurrentLearner, getCurrentParent } from '@/lib/api'
+import { getCurrentLearner, getCurrentParent, getSessionMode } from '@/lib/api'
 import { CreateLearnerForm } from './create-learner-form'
+import { LearnerManagement } from './learner-management'
 import { LogoutButton } from './logout-button'
 
 export default async function ParentPage() {
+  const mode = await getSessionMode()
+  if (mode === 'learner') redirect('/learn')
   const session = await getCurrentParent()
   if (!session) redirect('/login')
 
@@ -21,6 +24,7 @@ export default async function ParentPage() {
             <h2 id="learner-title">孩子学习身份已建立</h2>
             <p>昵称：{learner.nickname}</p>
             <p>头像：{learner.avatarId}</p>
+            <LearnerManagement learner={learner} />
           </section>
         ) : (
           <section aria-labelledby="learner-title">

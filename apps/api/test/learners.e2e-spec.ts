@@ -43,7 +43,7 @@ describe('learner profile API', () => {
   })
 
   it('creates and reads the learner using parent ownership from the session', async () => {
-    auth.getParentForToken.mockResolvedValue({ id: 'parent-1', email: 'parent@example.com' })
+    auth.getParentForToken.mockResolvedValue({ id: 'parent-1', email: 'parent@example.com', sessionId: 'session-1', mode: 'PARENT' })
     const profile = { id: 'learner-1', nickname: '小星', avatarId: 'fox' }
     learners.create.mockResolvedValue(profile)
     learners.getCurrent.mockResolvedValue(profile)
@@ -82,7 +82,7 @@ describe('learner profile API', () => {
     { nickname: '小星', avatarId: 'fox', pin: '12345' },
     { nickname: '小星', avatarId: 'fox', pin: 'abcdef' },
   ])('rejects invalid learner input %#', async (body) => {
-    auth.getParentForToken.mockResolvedValue({ id: 'parent-1', email: 'parent@example.com' })
+    auth.getParentForToken.mockResolvedValue({ id: 'parent-1', email: 'parent@example.com', sessionId: 'session-1', mode: 'PARENT' })
     const server = app.getHttpServer() as Parameters<typeof request>[0]
     await request(server)
       .post('/api/learners')

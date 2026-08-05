@@ -26,6 +26,7 @@ export const parentSessionResponseSchema = z.object({
   parent: z.object({
     email: z.string().email(),
   }),
+  mode: z.enum(['parent', 'learner']).default('parent'),
 })
 
 export type ParentSessionResponse = z.infer<typeof parentSessionResponseSchema>
@@ -53,3 +54,24 @@ export const learnerProfileSchema = z.object({
 })
 
 export type LearnerProfile = z.infer<typeof learnerProfileSchema>
+
+export const switchToLearnerRequestSchema = z.object({
+  pin: z.string().regex(/^\d{6}$/),
+})
+
+export const returnToParentRequestSchema = z.object({
+  password: z.string().min(1),
+})
+
+export const updateLearnerRequestSchema = z.object({
+  nickname: z.string().trim().min(1).max(24),
+  avatarId: z.enum(learnerAvatarIds),
+})
+
+export const updateLearnerPinRequestSchema = z.object({
+  password: z.string().min(1),
+  pin: z.string().regex(/^\d{6}$/),
+})
+
+export type UpdateLearnerRequest = z.infer<typeof updateLearnerRequestSchema>
+

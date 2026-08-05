@@ -28,6 +28,35 @@ export async function getCurrentLearner(): Promise<LearnerProfile | null> {
   }
 }
 
+export async function getSessionMode(): Promise<'parent' | 'learner' | null> {
+  try {
+    const cookieHeader = (await cookies()).toString()
+    const response = await fetch(`${API_URL}/auth/session`, {
+      cache: 'no-store',
+      headers: cookieHeader ? { cookie: cookieHeader } : {},
+    })
+    if (!response.ok) return null
+    const body = await response.json() as { mode?: unknown }
+    return body.mode === 'parent' || body.mode === 'learner' ? body.mode : null
+  } catch {
+    return null
+  }
+}
+
+export async function getLearnerHome(): Promise<LearnerProfile | null> {
+  try {
+    const cookieHeader = (await cookies()).toString()
+    const response = await fetch(`${API_URL}/learner-home`, {
+      cache: 'no-store',
+      headers: cookieHeader ? { cookie: cookieHeader } : {},
+    })
+    if (!response.ok) return null
+    return learnerProfileSchema.parse(await response.json())
+  } catch {
+    return null
+  }
+}
+
 export async function getCurrentParent(): Promise<ParentSessionResponse | null> {
   try {
     const cookieHeader = (await cookies()).toString()

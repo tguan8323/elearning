@@ -2,6 +2,7 @@ import { Body, Controller, Get, Inject, Post, Req, Res } from '@nestjs/common'
 import type { Request, Response } from 'express'
 
 import { AuthService } from './auth.service'
+import { CredentialRateLimitService } from './credential-rate-limit.service'
 import { PARENT_SESSION_COOKIE, ParentSessionService } from './parent-session.service'
 import { ParentLoginDto } from './auth.dto'
 
@@ -10,14 +11,25 @@ export class AuthController {
   constructor(
     @Inject(AuthService) private readonly auth: AuthService,
     @Inject(ParentSessionService) private readonly parentSession: ParentSessionService,
+    @Inject(CredentialRateLimitService) private readonly rateLimit: CredentialRateLimitService,
   ) {}
 
   @Post('login')
   async login(
+    @Req() request: Request,
     @Body() input: ParentLoginDto,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const session = await this.auth.login(input.email, input.password)
+    const scope = `login:${request.ip ?? 'unknown'}:${input.email.trim().toLowerCase()}`
+    this.rateLimit.assertAllowed(scope, 5, 15 * 60 * 1000)
+    let session
+    try {
+      session = await this.auth.login(input.email, input.password)
+      this.rateLimit.clear(scope)
+    } catch (error) {
+      this.rateLimit.fail(scope, 15 * 60 * 1000)
+      throw error
+    }
     response.cookie(PARENT_SESSION_COOKIE, session.token, {
       httpOnly: true,
       sameSite: 'lax',
@@ -27,6 +39,14 @@ export class AuthController {
     })
 
     return { parent: { email: session.parent.email } }
+  }
+
+  @Get('session')
+  async session(@Req() request: Request) {
+    const session = await this.parentSession.requireSession(request)
+    return session.mode === 'PARENT'
+      ? { mode: 'parent', parent: { email: session.email } }
+      : { mode: 'learner' }
   }
 
   @Get('me')

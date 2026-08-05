@@ -1,0 +1,7 @@
+-- CreateEnum
+CREATE TYPE "SessionMode" AS ENUM ('PARENT', 'LEARNER');
+
+-- AlterTable
+ALTER TABLE "ParentSession"
+ADD COLUMN "mode" "SessionMode" NOT NULL DEFAULT 'PARENT',
+ADD COLUMN "lastSeenAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
