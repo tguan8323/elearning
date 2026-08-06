@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common'
+import type { Prisma } from '@prisma/client'
 import { ConfigService } from '@nestjs/config'
 import { PrismaService } from '../database/prisma.service'
 import { COPYRIGHT_NOTICE } from './family-content.dto'
@@ -42,7 +43,7 @@ export class FamilyContentService {
     if (binding.version.asset.parentId !== parentId) throw new ForbiddenException('不能访问其他家庭的内容')
     if (!binding.slot.learnerEligible) throw new BadRequestException('此插槽不允许发布到孩子页面')
     if (binding.version.uploadState !== 'UPLOADED') throw new BadRequestException('文件尚未真实上传，不能发布')
-    return this.prisma.publication.create({ data: { parentId, bindingId, versionId: binding.versionId, snapshot: binding.previewSnapshot } })
+    return this.prisma.publication.create({ data: { parentId, bindingId, versionId: binding.versionId, snapshot: binding.previewSnapshot as Prisma.InputJsonValue } })
   }
 
   async withdraw(parentId: string, publicationId: string) {

@@ -14,6 +14,7 @@ vi.mock('@/lib/api', () => ({
     prompt: 'What do you need?',
     choices: ['Help, please.', 'Stop.', 'Break, please.', 'All done.'],
   }]),
+  getPublishedFamilyContent: vi.fn().mockResolvedValue([]),
 }))
 
 import LearnPage from './page'
