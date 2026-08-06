@@ -10,6 +10,7 @@ function createPrismaMock() {
       findFirst: vi.fn(),
       findUnique: vi.fn(),
       create: vi.fn(),
+      update: vi.fn(),
     },
     parentSession: {
       create: vi.fn(),
@@ -46,6 +47,22 @@ describe('AuthService', () => {
 
     await expect(service.initializeParent('other@example.com', 'a-secure-password')).resolves.toEqual({ created: false })
     expect(prisma.parentAccount.create).not.toHaveBeenCalled()
+  })
+
+  it('resets the password hash and revokes every active session', async () => {
+    prisma.parentAccount.update.mockResolvedValue({ id: 'parent-1' })
+    prisma.parentSession.updateMany.mockResolvedValue({ count: 2 })
+
+    await expect(service.resetParentPassword(' Parent@Example.com ', 'new-secure-password')).resolves.toEqual({ success: true })
+    const accountInput = prisma.parentAccount.update.mock.calls[0]?.[0] as { where: { email: string }; data: { passwordHash: string } }
+    expect(accountInput.where.email).toBe('parent@example.com')
+    expect(accountInput.data.passwordHash).not.toContain('new-secure-password')
+    const revokeInput = prisma.parentSession.updateMany.mock.calls[0]?.[0] as {
+      where: { parentId: string; revokedAt: null }
+      data: { revokedAt: Date }
+    }
+    expect(revokeInput.where).toEqual({ parentId: 'parent-1', revokedAt: null })
+    expect(revokeInput.data.revokedAt).toBeInstanceOf(Date)
   })
 
   it('returns the same error for a missing account and a wrong password', async () => {

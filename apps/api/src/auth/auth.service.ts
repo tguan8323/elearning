@@ -37,6 +37,20 @@ export class AuthService {
     }
   }
 
+  async resetParentPassword(email: string, password: string) {
+    const passwordHash = await hash(password, { type: 2 })
+    const parent = await this.prisma.parentAccount.update({
+      where: { email: this.normalizeEmail(email) },
+      data: { passwordHash },
+      select: { id: true },
+    })
+    await this.prisma.parentSession.updateMany({
+      where: { parentId: parent.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    })
+    return { success: true as const }
+  }
+
   async login(email: string, password: string) {
     const parent = await this.prisma.parentAccount.findUnique({
       where: { email: this.normalizeEmail(email) },
