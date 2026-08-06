@@ -20,11 +20,12 @@ function readCurrentContent(): CastContent | null {
 }
 
 export function CastingView() {
-  const [content, setContent] = useState<CastContent | null>(null)
+  const [content, setContent] = useState<CastContent | null>(() => {
+    if (typeof window === 'undefined') return null
+    return readCurrentContent()
+  })
 
   useEffect(() => {
-    setContent(readCurrentContent())
-
     const channel = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel(CAST_CHANNEL)
     const receive = (event: MessageEvent<CastContent>) => setContent(event.data)
     const receiveStored = (event: StorageEvent) => {
