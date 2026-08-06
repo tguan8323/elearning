@@ -10,6 +10,9 @@ const prisma = new PrismaClient()
 async function main() {
   const parent = await prisma.parentAccount.upsert({ where: { email: fixtureEmail }, update: { passwordHash: await hash(fixturePassword, { type: 2 }) }, create: { email: fixtureEmail, passwordHash: await hash(fixturePassword, { type: 2 }) } })
   await prisma.learnerProfile.upsert({ where: { parentId: parent.id }, update: {}, create: { parentId: parent.id, nickname: 'Synthetic learner', avatarId: 'star', pinHash: await hash('123456', { type: 2 }) } })
+  await prisma.contentSlot.createMany({ data: [
+    { id: 'synthetic-learner-visual', title: 'Synthetic learner visual', purpose: 'Synthetic acceptance', acceptedMimeTypes: ['image/png'], maxFileSize: 5 * 1024 * 1024, learnerEligible: true },
+  ], skipDuplicates: true })
   console.log('synthetic fixture ready')
 }
 void main().then(() => prisma.$disconnect()).catch(async (error: unknown) => { await prisma.$disconnect(); throw error })
