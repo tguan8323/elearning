@@ -203,6 +203,94 @@ h1 {
   text-align: left;
 }
 
+.privateContent,
+.publishedContent {
+  margin-top: 2rem;
+  border-top: 1px solid var(--calm-color-border);
+  padding-top: 1.5rem;
+}
+
+.privateContent textarea {
+  border: 1px solid var(--calm-color-border);
+  border-radius: var(--calm-radius-control);
+  padding: 0.75rem 1rem;
+  color: var(--calm-color-text);
+  background: var(--calm-color-surface);
+  font: inherit;
+  resize: vertical;
+}
+
+.lifecycle {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+
+.lifecycle li,
+.copyrightNotice,
+.contentSnapshot,
+.publishedContent article {
+  border: 1px solid var(--calm-color-border);
+  border-radius: var(--calm-radius-control);
+  padding: 1rem;
+}
+
+.lifecycle span {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--calm-color-muted);
+  font-size: 0.9rem;
+}
+
+.copyrightNotice {
+  margin: 1rem 0 1.5rem;
+  background: var(--calm-color-status);
+  line-height: 1.6;
+}
+
+.contentCatalog {
+  margin-top: 2rem;
+}
+
+.contentSnapshot {
+  margin-top: 1rem;
+}
+
+.contentSnapshot h4 {
+  display: inline;
+  margin-left: 0.75rem;
+  font-size: 1.15rem;
+}
+
+.contentSnapshot dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.4rem 1rem;
+}
+
+.contentSnapshot dt {
+  font-weight: 700;
+}
+
+.contentSnapshot dd {
+  margin: 0;
+}
+
+.statusBadge {
+  border-radius: 999px;
+  background: var(--calm-color-status);
+  padding: 0.25rem 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.publishedContent article {
+  margin-top: 0.75rem;
+  text-align: left;
+}
+
 .todayPlan,
 .lessonStep {
   margin-top: 2rem;

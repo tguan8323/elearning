@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 
-import { getLearnerHome, getPracticeTargets, getSessionMode } from '@/lib/api'
+import { getLearnerHome, getPracticeTargets, getPublishedFamilyContent, getSessionMode } from '@/lib/api'
+import { PublishedFamilyContent } from './published-family-content'
 import { ReturnToParentForm } from './return-to-parent-form'
 import { PracticeActivity } from './practice-activity'
 
@@ -10,7 +11,7 @@ export default async function LearnPage() {
   if (mode === 'parent') redirect('/parent')
   const learner = await getLearnerHome()
   if (!learner) redirect('/login')
-  const practice = await getPracticeTargets()
+  const [practice, familyContent] = await Promise.all([getPracticeTargets(), getPublishedFamilyContent()])
 
   return (
     <main className="shell learnerShell">
@@ -19,6 +20,7 @@ export default async function LearnPage() {
         <h1 id="learn-title">Hello, {learner.nickname}!</h1>
         <p className="summary">Ready to practice?</p>
         <PracticeActivity targets={practice} />
+        <PublishedFamilyContent items={familyContent} />
         <ReturnToParentForm />
       </section>
     </main>

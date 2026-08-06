@@ -104,6 +104,45 @@ export async function getPracticeTargets(): Promise<PracticeTarget[]> {
   } catch { return [] }
 }
 
+export type FamilyContentItem = {
+  id: string
+  title: string
+  contentType: string
+  language: string
+  source: string
+  rightsNote: string
+  description?: string
+  status: 'draft' | 'cataloged' | 'bound' | 'published' | 'withdrawn'
+}
+
+async function getFamilyContent(path: string): Promise<FamilyContentItem[]> {
+  try {
+    const cookieHeader = (await cookies()).toString()
+    const response = await fetch(`${API_URL}${path}`, {
+      cache: 'no-store', headers: cookieHeader ? { cookie: cookieHeader } : {},
+    })
+    if (!response.ok) return []
+    const body = await response.json() as unknown
+    if (!Array.isArray(body)) return []
+    return body.filter((item): item is FamilyContentItem => {
+      if (!item || typeof item !== 'object') return false
+      const value = item as Record<string, unknown>
+      return typeof value.id === 'string' && typeof value.title === 'string' &&
+        typeof value.contentType === 'string' && typeof value.language === 'string' &&
+        typeof value.source === 'string' && typeof value.rightsNote === 'string' &&
+        ['draft', 'cataloged', 'bound', 'published', 'withdrawn'].includes(String(value.status))
+    })
+  } catch { return [] }
+}
+
+export function getFamilyContentCatalog() {
+  return getFamilyContent('/family-content')
+}
+
+export function getPublishedFamilyContent() {
+  return getFamilyContent('/learner-home/family-content?status=published')
+}
+
 export async function getCurrentParent(): Promise<ParentSessionResponse | null> {
   try {
     const cookieHeader = (await cookies()).toString()
