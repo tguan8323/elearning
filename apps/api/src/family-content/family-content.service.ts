@@ -32,6 +32,16 @@ export class MetadataOnlyStorage implements ObjectStorage {
 export class FamilyContentService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService, @Inject(OBJECT_STORAGE) private readonly storage: ObjectStorage) {}
 
+  async slots() {
+    const slots = await this.prisma.contentSlot.findMany({ orderBy: { id: 'asc' } })
+    if (slots.length) return slots
+    return [
+      { id: 'learner-visual', title: '孩子页面图片', purpose: '低刺激视觉提示', acceptedMimeTypes: ['image/png', 'image/jpeg'], maxFileSize: 5 * 1024 * 1024, learnerEligible: true },
+      { id: 'learner-audio', title: '孩子页面音频', purpose: '家长审核的英语音频', acceptedMimeTypes: ['audio/mpeg', 'audio/wav'], maxFileSize: 25 * 1024 * 1024, learnerEligible: true },
+      { id: 'parent-reference', title: '家长参考', purpose: '只供家长准备和参考', acceptedMimeTypes: ['image/png', 'image/jpeg', 'application/pdf', 'text/plain'], maxFileSize: 25 * 1024 * 1024, learnerEligible: false },
+    ]
+  }
+
   async catalog(parentId: string, input: any) {
     return this.prisma.familyAsset.create({ data: {
       parentId, title: input.title, mediaType: input.mediaType, source: input.source, purpose: input.purpose,
@@ -44,7 +54,7 @@ export class FamilyContentService {
   async list(parentId: string) {
     return this.prisma.familyAsset.findMany({
       where: { parentId },
-      include: { versions: true },
+      include: { versions: { include: { bindings: { include: { publications: true, slot: true } } } }, },
       orderBy: { createdAt: 'desc' },
     })
   }

@@ -131,12 +131,16 @@ export async function getPracticeTargets(): Promise<PracticeTarget[]> {
 export type FamilyContentItem = {
   id: string
   title: string
-  contentType: string
-  language: string
+  mediaType?: string
+  contentType?: string
   source: string
-  rightsNote: string
+  purpose?: string
+  targetLanguage?: string
   description?: string
-  status: 'draft' | 'cataloged' | 'bound' | 'published' | 'withdrawn'
+  language?: string
+  rightsNote?: string
+  versions?: Array<{ id: string; version: number; mimeType: string; fileName: string; fileSize: number; uploadState: string }>
+  status?: 'draft' | 'cataloged' | 'bound' | 'published' | 'withdrawn'
 }
 
 async function getFamilyContent(path: string): Promise<FamilyContentItem[]> {
@@ -152,19 +156,17 @@ async function getFamilyContent(path: string): Promise<FamilyContentItem[]> {
       if (!item || typeof item !== 'object') return false
       const value = item as Record<string, unknown>
       return typeof value.id === 'string' && typeof value.title === 'string' &&
-        typeof value.contentType === 'string' && typeof value.language === 'string' &&
-        typeof value.source === 'string' && typeof value.rightsNote === 'string' &&
-        ['draft', 'cataloged', 'bound', 'published', 'withdrawn'].includes(String(value.status))
+        typeof value.mediaType === 'string' && typeof value.source === 'string' && typeof value.purpose === 'string' && Array.isArray(value.versions)
     })
   } catch { return [] }
 }
 
 export function getFamilyContentCatalog() {
-  return getFamilyContent('/family-content')
+  return getFamilyContent('/family-content/assets')
 }
 
 export function getPublishedFamilyContent() {
-  return getFamilyContent('/learner-home/family-content?status=published')
+  return getFamilyContent('/learner/family-content')
 }
 
 export async function getCurrentParent(): Promise<ParentSessionResponse | null> {

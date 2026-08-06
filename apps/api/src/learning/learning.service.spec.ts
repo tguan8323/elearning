@@ -82,7 +82,7 @@ describe('LearningService evidence and practice', () => {
     prisma.learningObservation.findMany.mockResolvedValue([
       { targetId: 'phonics-s', outcome: 'prompted', promptLevel: 'gesture', materialVariant: 'cards', observedAt: new Date('2026-08-01') },
       { targetId: 'phonics-s', outcome: 'independent', promptLevel: 'none', materialVariant: 'objects', observedAt: new Date('2026-08-03') },
-      { targetId: 'phonics-a', outcome: 'not_yet', promptLevel: 'direct_model', materialVariant: 'cards', observedAt: new Date('2026-08-03') },
+      { targetId: 'phonics-a', outcome: 'not_observed', promptLevel: 'not_applicable', materialVariant: 'cards', observedAt: new Date('2026-08-03') },
     ])
     const result = await service.getEvidenceSummary('parent-1')
     expect(result.stableTargetIds).toEqual(['phonics-s'])

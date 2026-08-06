@@ -2,11 +2,12 @@
 
 import { useState } from 'react'
 
+import { createOperation, saveRecordAndQueue } from '@/lib/offline-queue'
 import { publishCastContent } from '../cast/casting-view'
-
 export function StartLesson({ target }: { target: { id: string; title: string; parentScript: string[]; materials: string[] } }) {
   const [step, setStep] = useState<number | null>(null)
   const [sessionId, setSessionId] = useState('')
+  const [statusMessage, setStatusMessage] = useState('')
   const stages = ['预告与准备', '回顾上一课', '引入一个新目标', '多方式练习', '明确结束']
   const currentContent = step === null ? '' : target.parentScript[Math.min(step, target.parentScript.length - 1)]
 
@@ -22,30 +23,36 @@ export function StartLesson({ target }: { target: { id: string; title: string; p
 
   async function start() {
     const clientId = crypto.randomUUID()
-    const response = await fetch('/api/learning/sessions', {
-      method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ clientId, targetId: target.id }),
-    })
-    if (response.ok) {
+    const payload = { clientId, targetId: target.id }
+    let response: Response | null = null
+    try { response = await fetch('/api/learning/sessions', { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) }) } catch { response = null }
+    if (response?.ok) {
       const body = await response.json() as { id: string }
       setSessionId(body.id)
       setStep(0)
       publishCastContent({ sessionId: body.id, text: target.parentScript[0] ?? '' })
+    } else {
+      setSessionId(clientId)
+      setStep(0)
+      await saveRecordAndQueue({ recordId: clientId, version: 0, deleted: false, payload: { clientId, targetId: target.id, status: 'IN_PROGRESS' } }, createOperation({ kind: 'upsert-session', recordId: clientId, baseVersion: 0, payload }))
+      setStatusMessage('当前离线，教学记录已保存在本机，联网后会同步。')
     }
   }
 
   async function observe(outcome: 'independent' | 'prompted' | 'not_observed' | 'declined') {
-    await fetch('/api/learning/observations', {
-      method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ clientId: crypto.randomUUID(), sessionId, targetId: target.id, outcome }),
-    })
+    const observation = { clientId: crypto.randomUUID(), sessionId, targetId: target.id, outcome, promptLevel: outcome === 'independent' ? 'none' : outcome === 'prompted' ? 'gesture' : 'not_applicable', materialVariant: `lesson-stage-${step ?? 4}` }
+    try {
+      const response = await fetch('/api/learning/observations', { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify(observation) })
+      if (!response.ok) throw new Error('offline')
+    } catch {
+      await saveRecordAndQueue({ recordId: observation.clientId, version: 0, deleted: false, payload: observation }, createOperation({ kind: 'upsert-session', recordId: observation.clientId, baseVersion: 0, payload: observation }))
+      setStatusMessage('观察记录已保存在本机，联网后会同步。')
+    }
     await finish('COMPLETED')
   }
 
   async function finish(status: 'COMPLETED' | 'ENDED_EARLY') {
-    await fetch(`/api/learning/sessions/${sessionId}`, {
-      method: 'PATCH', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status }),
-    })
+    try { await fetch(`/api/learning/sessions/${sessionId}`, { method: 'PATCH', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status }) }) } catch { setStatusMessage('结束状态已保存在本机，联网后会同步。') }
     publishCastContent({ sessionId, text: '' })
     setStep(null)
   }
@@ -54,7 +61,7 @@ export function StartLesson({ target }: { target: { id: string; title: string; p
 
   return (
     <section className="lessonStep" aria-live="polite">
-      <p className="eyebrow">第 {step + 1} 步 / 5</p>
+      <p className="eyebrow">第 {step + 1} 步 / 5</p>{statusMessage ? <p role="status">{statusMessage}</p> : null}
       <h3>{stages[step]}</h3>
       <p>{step === 2 ? target.title : step === 4 ? 'Say: All done.' : currentContent}</p>
       <div className="lessonActions">

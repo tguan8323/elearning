@@ -108,8 +108,8 @@ export class LearningService {
   async observe(parentId: string, input: { clientId: string; sessionId: string; targetId: string; outcome: string; promptLevel?: string; materialVariant?: string; note?: string }) {
     const learner = await this.prisma.learnerProfile.findUnique({ where: { parentId }, select: { id: true } })
     if (!learner) throw new NotFoundException('尚未建立孩子学习身份')
-    const outcomes = ['independent', 'prompted', 'not_yet', 'refused']
-    const promptLevels = ['none', 'visual', 'gesture', 'verbal', 'direct_model']
+    const outcomes = ['independent', 'prompted', 'not_observed', 'declined']
+    const promptLevels = ['none', 'visual', 'gesture', 'verbal', 'direct_model', 'not_applicable']
     const session = await this.prisma.teachingSession.findFirst({
       where: { id: input.sessionId, learnerId: learner.id }, select: { id: true, targetId: true },
     })
@@ -122,7 +122,7 @@ export class LearningService {
     if (input.outcome === 'independent' && input.promptLevel !== 'none') {
       throw new BadRequestException('独立完成不能包含提示')
     }
-    if (input.outcome !== 'independent' && input.promptLevel === 'none') {
+    if (input.outcome !== 'independent' && !['not_applicable'].includes(input.promptLevel) && input.promptLevel === 'none') {
       throw new BadRequestException('非独立表现需要记录提示层级')
     }
     const variant = input.materialVariant?.trim()
@@ -152,10 +152,10 @@ export class LearningService {
       const variants = new Set(items.map((item) => item.materialVariant).filter(Boolean))
       const stable = days.size >= 2 && variants.size >= 2 && items.some((item) => item.outcome === 'independent' && item.promptLevel === 'none')
       if (stable) stableTargetIds.push(targetId)
-      else reviewQueue.push({ id: targetId, title: target.title, reason: items.some((item) => item.outcome === 'not_yet' || item.outcome === 'refused') ? '近期表现提示需要优先回顾' : '还需要跨教学日或更换活动继续观察' })
+      else reviewQueue.push({ id: targetId, title: target.title, reason: items.some((item) => item.outcome === 'not_observed' || item.outcome === 'declined') ? '近期表现提示需要优先回顾' : '还需要跨教学日或更换活动继续观察' })
     }
     reviewQueue.sort((a, b) => {
-      const difficult = (id: string) => groups.get(id)?.filter((item) => item.outcome === 'not_yet' || item.outcome === 'refused').length ?? 0
+      const difficult = (id: string) => groups.get(id)?.filter((item) => item.outcome === 'not_observed' || item.outcome === 'declined').length ?? 0
       return difficult(b.id) - difficult(a.id)
     })
     const recent = observations.slice(0, 10)
