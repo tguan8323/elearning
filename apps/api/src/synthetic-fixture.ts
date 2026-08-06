@@ -12,4 +12,4 @@ async function main() {
   await prisma.learnerProfile.upsert({ where: { parentId: parent.id }, update: {}, create: { parentId: parent.id, nickname: 'Synthetic learner', avatarId: 'star', pinHash: await hash('123456', { type: 2 }) } })
   console.log('synthetic fixture ready')
 }
-main().finally(() => prisma.$disconnect())
+void main().then(() => prisma.$disconnect()).catch(async (error: unknown) => { await prisma.$disconnect(); throw error })

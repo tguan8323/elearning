@@ -10,6 +10,7 @@ function prismaMock() {
     syncChange: { findFirst: vi.fn(), create: vi.fn(), findMany: vi.fn() },
     learnerProfile: { findUnique: vi.fn() },
     teachingSession: { upsert: vi.fn(), deleteMany: vi.fn() },
+    learningObservation: { upsert: vi.fn() },
   }
   return { tx, prisma: { ...tx, $transaction: vi.fn((work) => work(tx)) } }
 }

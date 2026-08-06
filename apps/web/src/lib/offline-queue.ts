@@ -1,6 +1,6 @@
 export type OfflineOperation = {
   operationId: string
-  kind: 'upsert-session' | 'delete-session'
+  kind: 'upsert-session' | 'upsert-observation' | 'delete-session'
   recordId: string
   baseVersion: number
   payload?: Record<string, unknown>
@@ -92,7 +92,7 @@ export async function replayQueue(fetcher: typeof fetch = fetch) {
       method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify(operation),
     })
     if (response.status === 409) { const detail = await response.json().catch(() => ({})); db.close(); throw new Error(`同步冲突：${JSON.stringify(detail)}`) }
-    if (!response.ok) throw new Error(`同步失败：${response.status}`)
+    if (!response.ok) { db.close(); throw new Error(`同步失败：${response.status}`) }
     const tx = db.transaction('operations', 'readwrite')
     tx.objectStore('operations').delete(operation.operationId)
     await new Promise<void>((resolve, reject) => { tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error) })

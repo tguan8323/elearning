@@ -6,10 +6,10 @@ import { PrismaService } from '../database/prisma.service'
 
 type SyncOperation = {
   operationId: string
-  kind: 'upsert-session' | 'delete-session'
+  kind: 'upsert-session' | 'upsert-observation' | 'delete-session'
   recordId: string
   baseVersion: number
-  payload?: { clientId: string; targetId: string; targetTitle: string; status?: string; startedAt?: string }
+  payload?: { clientId: string; targetId: string; targetTitle?: string; sessionId?: string; outcome?: string; promptLevel?: string; materialVariant?: string; status?: string; startedAt?: string }
 }
 
 @Injectable()
@@ -20,16 +20,16 @@ export class SyncService {
     const learner = await this.prisma.learnerProfile.findUnique({ where: { parentId }, select: { id: true } })
     if (!learner) throw new BadRequestException('尚未建立孩子学习身份')
     const publications = await this.prisma.publication.findMany({ where: { parentId, state: 'PUBLISHED', binding: { slot: { learnerEligible: true } } }, select: { id: true, versionId: true, snapshot: true } })
-    const resources = publications.map((publication) => `/api/family-content/publications/${publication.id}/media`)
+    const resources = publications.map((publication) => `/api/learner/family-content/${publication.id}/media`)
     const identity = { curriculumVersion: '2026.08-original-v1', publications: publications.map(({ id, versionId }) => ({ id, versionId })) }
-    const payload = { curriculumVersion: identity.curriculumVersion, learnerId: learner.id, generatedAt: new Date().toISOString(), contents: ['core-curriculum', 'published-family-content'], resources, sensitiveData: false }
-    return { version: this.packageChecksum(identity).slice(0, 16), checksum: this.packageChecksum(payload), sizeBytes: Buffer.byteLength(JSON.stringify(payload)), payload }
+    const payload = { curriculumVersion: identity.curriculumVersion, learnerId: learner.id, contents: ['core-curriculum', 'published-family-content'], resources, publications, sensitiveData: false }
+    const checksum = this.packageChecksum(payload)
+    return { version: this.packageChecksum(identity).slice(0, 16), checksum, sizeBytes: Buffer.byteLength(JSON.stringify(payload)), payload }
   }
 
   async packageBundle(parentId: string) {
     const manifest = await this.packageManifest(parentId)
-    const publications = await this.prisma.publication.findMany({ where: { parentId, state: 'PUBLISHED', binding: { slot: { learnerEligible: true } } }, select: { id: true, snapshot: true } })
-    const body = Buffer.from(JSON.stringify({ manifest, publications }))
+    const body = Buffer.from(JSON.stringify(manifest.payload))
     return { ...manifest, body, capacity: { requiredBytes: body.length, recommendedBytes: body.length * 2, maxBytes: 50 * 1024 * 1024 }, retentionDays: 30 }
   }
   packageChecksum(body: unknown) {
@@ -69,17 +69,23 @@ export class SyncService {
           update: { status: operation.payload.status ?? 'IN_PROGRESS' },
           create: {
             id: operation.recordId, clientId: operation.payload.clientId, learnerId: learner.id,
-            targetId: operation.payload.targetId, targetTitle: operation.payload.targetTitle,
+            targetId: operation.payload.targetId, targetTitle: operation.payload.targetTitle ?? operation.payload.targetId,
             status: operation.payload.status ?? 'IN_PROGRESS',
             startedAt: operation.payload.startedAt ? new Date(operation.payload.startedAt) : new Date(),
           },
         })
         result = { record, version, deleted: false }
+      } else if (operation.kind === 'upsert-observation' && operation.payload) {
+        const observation = await tx.learningObservation.upsert({
+          where: { clientId: operation.payload.clientId }, update: {},
+          create: { clientId: operation.payload.clientId, learnerId: learner.id, sessionId: operation.payload.sessionId ?? operation.recordId, targetId: operation.payload.targetId, outcome: operation.payload.outcome ?? 'not_observed', promptLevel: operation.payload.promptLevel ?? 'not_applicable', materialVariant: operation.payload.materialVariant ?? 'offline' },
+        })
+        result = { observation, version, deleted: false }
       } else throw new BadRequestException('不支持的离线操作')
 
       const jsonResult = result as Prisma.InputJsonObject
       const change = await tx.syncChange.create({
-        data: { parentId, recordType: 'teaching-session', recordId: operation.recordId, version, deleted: operation.kind === 'delete-session', payload: jsonResult },
+        data: { parentId, recordType: operation.kind === 'upsert-observation' ? 'learning-observation' : 'teaching-session', recordId: operation.recordId, version, deleted: operation.kind === 'delete-session', payload: jsonResult },
       })
       const response = { ...result, cursor: change.sequence.toString() }
       await tx.syncOperation.create({ data: { parentId, operationId: operation.operationId, result: response } })

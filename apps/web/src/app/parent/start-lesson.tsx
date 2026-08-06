@@ -45,14 +45,20 @@ export function StartLesson({ target }: { target: { id: string; title: string; p
       const response = await fetch('/api/learning/observations', { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify(observation) })
       if (!response.ok) throw new Error('offline')
     } catch {
-      await saveRecordAndQueue({ recordId: observation.clientId, version: 0, deleted: false, payload: observation }, createOperation({ kind: 'upsert-session', recordId: observation.clientId, baseVersion: 0, payload: observation }))
+      await saveRecordAndQueue({ recordId: observation.clientId, version: 0, deleted: false, payload: observation }, createOperation({ kind: 'upsert-observation', recordId: observation.clientId, baseVersion: 0, payload: observation }))
       setStatusMessage('观察记录已保存在本机，联网后会同步。')
     }
     await finish('COMPLETED')
   }
 
   async function finish(status: 'COMPLETED' | 'ENDED_EARLY') {
-    try { await fetch(`/api/learning/sessions/${sessionId}`, { method: 'PATCH', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status }) }) } catch { setStatusMessage('结束状态已保存在本机，联网后会同步。') }
+    try {
+      const response = await fetch(`/api/learning/sessions/${sessionId}`, { method: 'PATCH', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status }) })
+      if (!response.ok) throw new Error('offline')
+    } catch {
+      await saveRecordAndQueue({ recordId: `${sessionId}:finish`, version: 0, deleted: false, payload: { clientId: `${sessionId}:finish`, sessionId, targetId: target.id, status } }, createOperation({ kind: 'upsert-session', recordId: sessionId, baseVersion: 0, payload: { clientId: `${sessionId}:finish`, targetId: target.id, status } }))
+      setStatusMessage('结束状态已保存在本机，联网后会同步。')
+    }
     publishCastContent({ sessionId, text: '' })
     setStep(null)
   }
