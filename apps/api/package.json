@@ -8,12 +8,14 @@
     "start": "node dist/main.js",
     "parent:init": "tsx src/initialize-parent.ts",
     "parent:reset-password": "tsx src/reset-parent-password.ts",
+    "fixture:synthetic": "tsx src/synthetic-fixture.ts",
     "lint": "eslint src test",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
     "@family-english/contracts": "workspace:*",
+    "@family-english/domain": "workspace:*",
     "@nestjs/common": "^11.1.6",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.6",

@@ -19,8 +19,11 @@ export class SyncService {
   async packageManifest(parentId: string) {
     const learner = await this.prisma.learnerProfile.findUnique({ where: { parentId }, select: { id: true } })
     if (!learner) throw new BadRequestException('尚未建立孩子学习身份')
-    const payload = { curriculumVersion: '2026.08-original-v1', learnerId: learner.id, generatedAt: new Date().toISOString(), contents: ['core-curriculum', 'published-family-content'], sensitiveData: false }
-    return { version: this.packageChecksum(payload).slice(0, 16), checksum: this.packageChecksum(payload), sizeBytes: JSON.stringify(payload).length, payload }
+    const publications = await this.prisma.publication.findMany({ where: { parentId, state: 'PUBLISHED', binding: { slot: { learnerEligible: true } } }, select: { id: true, versionId: true, snapshot: true } })
+    const resources = publications.map((publication) => `/api/family-content/publications/${publication.id}/media`)
+    const identity = { curriculumVersion: '2026.08-original-v1', publications: publications.map(({ id, versionId }) => ({ id, versionId })) }
+    const payload = { curriculumVersion: identity.curriculumVersion, learnerId: learner.id, generatedAt: new Date().toISOString(), contents: ['core-curriculum', 'published-family-content'], resources, sensitiveData: false }
+    return { version: this.packageChecksum(identity).slice(0, 16), checksum: this.packageChecksum(payload), sizeBytes: Buffer.byteLength(JSON.stringify(payload)), payload }
   }
 
   async packageBundle(parentId: string) {
@@ -49,7 +52,7 @@ export class SyncService {
       })
       const currentVersion = latest?.version ?? 0
       if (operation.baseVersion !== currentVersion) {
-        throw new ConflictException({ code: 'BASE_VERSION_CONFLICT', currentVersion, serverRecord: latest })
+        throw new ConflictException({ code: 'BASE_VERSION_CONFLICT', operationId: operation.operationId, recordId: operation.recordId, currentVersion, serverRecord: latest })
       }
 
       const learner = await tx.learnerProfile.findUnique({ where: { parentId }, select: { id: true } })

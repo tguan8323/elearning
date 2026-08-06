@@ -100,6 +100,18 @@ export async function replayQueue(fetcher: typeof fetch = fetch) {
   db.close()
 }
 
+export async function resolveConflict(operationId: string, choice: 'server' | 'local', currentVersion?: number) {
+  const db = await openOfflineDatabase()
+  const tx = db.transaction(['operations', 'records'], 'readwrite')
+  const operations = tx.objectStore('operations')
+  const operation = await requestResult(operations.get(operationId)) as OfflineOperation | undefined
+  if (!operation) { db.close(); return }
+  if (choice === 'server') operations.delete(operationId)
+  else operations.put({ ...operation, baseVersion: currentVersion ?? operation.baseVersion })
+  await new Promise<void>((resolve, reject) => { tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error) })
+  db.close()
+}
+
 export function createOperation(input: Omit<OfflineOperation, 'operationId' | 'createdAt'>): OfflineOperation {
   return { ...input, operationId: crypto.randomUUID(), createdAt: new Date().toISOString() }
 }

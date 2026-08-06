@@ -32,8 +32,7 @@ export class SyncController {
     response.setHeader('Content-Disposition', `attachment; filename="family-english-${bundle.version}.json"`)
     return response.send(bundle.body)
   }
-
-
+  @Get('package')
   async packageManifest(@Req() request: Request) { const parent = await this.sessions.requireParent(request); return this.sync.packageManifest(parent.id) }
 
   @Post('verify-package')

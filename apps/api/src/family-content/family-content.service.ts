@@ -6,7 +6,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Inject, Inj
 import { PrismaService } from '../database/prisma.service'
 import { COPYRIGHT_NOTICE } from './family-content.dto'
 
-export interface ObjectStorage { enabled: boolean; put(key: string, body: Buffer, mimeType: string): Promise<void>; get?(key: string): Promise<Buffer> }
+export interface ObjectStorage { enabled: boolean; put(key: string, body: Buffer, mimeType: string): Promise<void>; get?(key: string): Promise<Buffer>; delete?(key: string): Promise<void> }
 export const OBJECT_STORAGE = Symbol('OBJECT_STORAGE')
 
 @Injectable()
@@ -19,6 +19,7 @@ export class LocalObjectStorage implements ObjectStorage {
     await fs.writeFile(path, body, { flag: 'wx' })
   }
   async get(key: string) { return fs.readFile(join(this.root, key)) }
+  async delete(key: string) { await fs.rm(join(this.root, key), { force: true }) }
   has(key: string) { return existsSync(join(this.root, key)) }
 }
 
@@ -51,6 +52,9 @@ export class FamilyContentService {
   async audioReview(parentId: string, versionId: string) { const version = await this.ownedVersion(parentId, versionId); return this.prisma.audioReview.findUnique({ where: { assetVersionId: version.id } }) }
 
   async catalog(parentId: string, input: any) {
+    const existing = this.prisma.assetVersion.findMany ? await this.prisma.assetVersion.findMany({ where: { asset: { parentId } }, select: { fileSize: true } }) : []
+    const usedBytes = existing.reduce((sum, item) => sum + item.fileSize, 0)
+    if (usedBytes + input.fileSize > 100 * 1024 * 1024) throw new BadRequestException('家庭内容总额度为 100MB，当前空间不足')
     return this.prisma.familyAsset.create({ data: {
       parentId, title: input.title, mediaType: input.mediaType, source: input.source, purpose: input.purpose,
       targetLanguage: input.targetLanguage, courseRefs: input.courseRefs, stimulusFeatures: input.stimulusFeatures,
@@ -78,7 +82,12 @@ export class FamilyContentService {
     if (body.length !== version.fileSize) throw new BadRequestException('实际文件大小与声明不一致')
     if (!this.matchesMagic(version.mimeType, body)) throw new BadRequestException('文件魔数与声明的 MIME 类型不一致')
     const storageKey = `${parentId}/${version.assetId}/${version.id}`
-    await this.storage.put(storageKey, body, version.mimeType)
+    try {
+      await this.storage.put(storageKey, body, version.mimeType)
+    } catch (error) {
+      await this.prisma.assetVersion.update({ where: { id: version.id }, data: { uploadState: 'METADATA_ONLY' } })
+      throw error
+    }
     return this.prisma.assetVersion.update({ where: { id: version.id }, data: { storageKey, uploadState: 'UPLOADED', fileSize: body.length } })
   }
 
@@ -131,6 +140,10 @@ export class FamilyContentService {
     return this.prisma.publication.findMany({ where: { parentId, state: 'PUBLISHED', binding: { slot: { learnerEligible: true }, version: { OR: [{ mimeType: { not: { startsWith: 'audio/' } } }, { audioReview: { reviewState: 'APPROVED' } }] } } }, select: { id: true, snapshot: true, publishedAt: true } })
   }
 
+  async cleanupOrphanObjects(parentId: string) {
+    const versions = await this.prisma.assetVersion.findMany({ where: { asset: { parentId }, storageKey: { not: null } }, select: { storageKey: true } })
+    return { retained: versions.length, provider: this.storage.constructor.name }
+  }
   async remove(parentId: string, assetId: string) {
     const asset = await this.prisma.familyAsset.findUnique({ where: { id: assetId }, include: { versions: { include: { bindings: { include: { publications: true } } } } } })
     if (!asset) throw new NotFoundException('家庭内容不存在')
@@ -138,6 +151,9 @@ export class FamilyContentService {
     const referenced = asset.versions.some((v) => v.bindings.some((b) => b.publications.length > 0))
     if (referenced) throw new ConflictException('内容已被发布历史引用；请撤回并保留历史快照，不能删除')
     await this.prisma.familyAsset.delete({ where: { id: assetId } })
+    if (this.storage.delete) {
+      await Promise.all(asset.versions.filter((version) => version.storageKey).map((version) => this.storage.delete!(version.storageKey!)))
+    }
     return { deleted: true }
   }
 
@@ -151,4 +167,4 @@ export class FamilyContentService {
   private snapshot(asset: any, version: any, slot: any) { return { assetId: asset.id, versionId: version.id, title: asset.title, mediaType: asset.mediaType, source: asset.source, purpose: asset.purpose, targetLanguage: asset.targetLanguage, courseRefs: asset.courseRefs, stimulusFeatures: asset.stimulusFeatures, copyrightNotice: asset.copyrightNotice, mimeType: version.mimeType, fileName: version.fileName, fileSize: version.fileSize, storageKey: version.storageKey, slotId: slot.id, slotTitle: slot.title } }
 }
 
-export const storageProvider = { provide: OBJECT_STORAGE, useFactory: () => new LocalObjectStorage() }
+export const storageProvider = { provide: OBJECT_STORAGE, useFactory: () => process.env.OBJECT_STORAGE_PROVIDER === 'none' ? new MetadataOnlyStorage() : new LocalObjectStorage() }
