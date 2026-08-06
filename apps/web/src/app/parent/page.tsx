@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 
-import { getCurrentLearner, getCurrentParent, getEvidenceSummary, getFamilyContentCatalog, getLearningPlan, getSessionMode } from '@/lib/api'
+import { getCurrentLearner, getCurrentParent, getEvidenceSummary, getFamilyAdaptation, getFamilyContentCatalog, getLearningPlan, getMaterialsCatalog, getSessionMode } from '@/lib/api'
+import { FamilyAdaptationForm } from './family-adaptation-form'
 import { CreateLearnerForm } from './create-learner-form'
 import { FamilyContentManager } from './family-content-manager'
 import { LearnerManagement } from './learner-management'
@@ -14,10 +15,12 @@ export default async function ParentPage() {
   if (!session) redirect('/login')
 
   const learner = await getCurrentLearner()
-  const [plan, evidence, familyContent] = await Promise.all([
+  const [plan, evidence, familyContent, adaptation, materialsCatalog] = await Promise.all([
     learner ? getLearningPlan() : Promise.resolve(null),
     learner ? getEvidenceSummary() : Promise.resolve(null),
     getFamilyContentCatalog(),
+    getFamilyAdaptation(),
+    getMaterialsCatalog(),
   ])
 
   return (
@@ -62,6 +65,7 @@ export default async function ParentPage() {
             <CreateLearnerForm />
           </section>
         )}
+        {adaptation ? <FamilyAdaptationForm initial={adaptation} catalog={materialsCatalog} /> : null}
         <FamilyContentManager items={familyContent} />
         <LogoutButton />
       </section>

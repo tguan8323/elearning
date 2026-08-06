@@ -1,6 +1,20 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { curriculumTargets, curriculumVersion, phonicsGroupCount } from './curriculum.data'
 import { PrismaService } from '../database/prisma.service'
+import { DEFAULT_ADAPTATION, type UpdateFamilyAdaptationDto } from './adaptation.dto'
+
+const MATERIALS_CATALOG = [
+  {
+    id: 'flash-cards', title: 'Flash Cards', kind: 'metadata',
+    description: '家庭自有闪卡的导航信息；不存储或复制卡面内容。',
+    fields: ['套装名称', '卡片范围', '收纳位置'],
+  },
+  {
+    id: 'ort-physical-books', title: 'ORT 实体书', kind: 'physical-book-navigation',
+    description: '仅记录家庭自有实体书的目录与取用位置；不提供正文、插图或扫描件。',
+    fields: ['书名', '级别', '书架位置', '家庭备注'],
+  },
+] as const
 
 @Injectable()
 export class LearningService {
@@ -29,18 +43,29 @@ export class LearningService {
     return this.prisma.familyAdaptation.upsert({
       where: { parentId },
       update: {},
-      create: {
-        parentId,
-        interests: [],
-        excludedThemes: ['强烈声音', '闪烁动画', '竞争与倒计时'],
-        availableMaterials: ['Flash Cards', 'ORT 实体书'],
-      },
+      create: { parentId, ...DEFAULT_ADAPTATION },
     })
   }
 
-  async updateAdaptation(parentId: string, input: Record<string, unknown>) {
+  async updateAdaptation(parentId: string, input: UpdateFamilyAdaptationDto) {
     await this.getAdaptation(parentId)
-    return this.prisma.familyAdaptation.update({ where: { parentId }, data: input })
+    const clean = (items: string[]) => [...new Set(items.map((item) => item.trim()).filter(Boolean))]
+    return this.prisma.familyAdaptation.update({
+      where: { parentId },
+      data: { ...input, accent: 'en-US', interests: clean(input.interests), excludedThemes: clean(input.excludedThemes), availableMaterials: clean(input.availableMaterials) },
+    })
+  }
+
+  async resetAdaptation(parentId: string) {
+    return this.prisma.familyAdaptation.upsert({
+      where: { parentId },
+      update: DEFAULT_ADAPTATION,
+      create: { parentId, ...DEFAULT_ADAPTATION },
+    })
+  }
+
+  getMaterialsCatalog() {
+    return MATERIALS_CATALOG
   }
 
   async getPlan(parentId: string) {

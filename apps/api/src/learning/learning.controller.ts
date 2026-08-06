@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Inject, Param, Patch, Post, Req } from '
 import type { Request } from 'express'
 
 import { ParentSessionService } from '../auth/parent-session.service'
+import { UpdateFamilyAdaptationDto } from './adaptation.dto'
 import { LearningService } from './learning.service'
 
 @Controller('learning')
@@ -24,19 +25,21 @@ export class LearningController {
   }
 
   @Patch('adaptation')
-  async updateAdaptation(@Req() request: Request, @Body() input: Record<string, unknown>) {
+  async updateAdaptation(@Req() request: Request, @Body() input: UpdateFamilyAdaptationDto) {
     const parent = await this.sessions.requireParent(request)
-    const allowed = {
-      sessionMinutes: Number(input.sessionMinutes),
-      sessionsPerWeek: Number(input.sessionsPerWeek),
-      accent: 'en-US',
-      reducedMotion: Boolean(input.reducedMotion),
-      soundEnabled: Boolean(input.soundEnabled),
-      interests: Array.isArray(input.interests) ? input.interests.map(String) : [],
-      excludedThemes: Array.isArray(input.excludedThemes) ? input.excludedThemes.map(String) : [],
-      availableMaterials: Array.isArray(input.availableMaterials) ? input.availableMaterials.map(String) : [],
-    }
-    return this.learning.updateAdaptation(parent.id, allowed)
+    return this.learning.updateAdaptation(parent.id, input)
+  }
+
+  @Post('adaptation/reset')
+  async resetAdaptation(@Req() request: Request) {
+    const parent = await this.sessions.requireParent(request)
+    return this.learning.resetAdaptation(parent.id)
+  }
+
+  @Get('materials-catalog')
+  async materialsCatalog(@Req() request: Request) {
+    await this.sessions.requireParent(request)
+    return this.learning.getMaterialsCatalog()
   }
 
   @Get('evidence-summary')

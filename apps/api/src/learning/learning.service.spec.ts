@@ -22,6 +22,32 @@ describe('LearningService evidence and practice', () => {
     service = new LearningService(prisma as unknown as PrismaService)
   })
 
+  it('creates and resets the documented family defaults', async () => {
+    prisma.familyAdaptation.upsert.mockResolvedValue({ sessionMinutes: 15, sessionsPerWeek: 5, accent: 'en-US' })
+    await service.getAdaptation('parent-1')
+    const firstCreate = prisma.familyAdaptation.upsert.mock.calls[0]?.[0].create
+    expect(firstCreate).toMatchObject({ parentId: 'parent-1', sessionMinutes: 15, sessionsPerWeek: 5, accent: 'en-US', reducedMotion: true })
+    await service.resetAdaptation('parent-1')
+    const resetUpdate = prisma.familyAdaptation.upsert.mock.calls.at(-1)?.[0].update
+    expect(resetUpdate).toMatchObject({ sessionMinutes: 15, sessionsPerWeek: 5, accent: 'en-US' })
+  })
+
+  it('normalizes adaptation lists and exposes metadata-only protected-material navigation', async () => {
+    prisma.familyAdaptation.upsert.mockResolvedValue({})
+    prisma.familyAdaptation.update.mockResolvedValue({})
+    await service.updateAdaptation('parent-1', {
+      sessionMinutes: 20, sessionsPerWeek: 4, accent: 'en-US', reducedMotion: false, soundEnabled: false,
+      interests: [' space ', 'space', ''], excludedThemes: ['竞赛'], availableMaterials: ['Flash Cards'],
+    })
+    expect(prisma.familyAdaptation.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ accent: 'en-US', interests: ['space'] }),
+    }))
+    const catalog = service.getMaterialsCatalog()
+    expect(catalog.map((item) => item.id)).toEqual(['flash-cards', 'ort-physical-books'])
+    expect(JSON.stringify(catalog)).toContain('不存储或复制')
+    expect(JSON.stringify(catalog)).not.toMatch(/故事正文|书页内容/)
+  })
+
   it('returns only curriculum targets observed in completed accompanied sessions', async () => {
     prisma.learningObservation.findMany.mockResolvedValue([
       { targetId: 'functional-help' },

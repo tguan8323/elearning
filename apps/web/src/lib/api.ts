@@ -57,6 +57,30 @@ export async function getLearnerHome(): Promise<LearnerProfile | null> {
   }
 }
 
+export type FamilyAdaptation = {
+  sessionMinutes: number
+  sessionsPerWeek: number
+  accent: 'en-US'
+  reducedMotion: boolean
+  soundEnabled: boolean
+  interests: string[]
+  excludedThemes: string[]
+  availableMaterials: string[]
+}
+
+export type MaterialsCatalogItem = { id: string; title: string; kind: string; description: string; fields: string[] }
+
+async function getLearningResource<T>(path: string): Promise<T | null> {
+  try {
+    const cookieHeader = (await cookies()).toString()
+    const response = await fetch(`${API_URL}/learning/${path}`, { cache: 'no-store', headers: cookieHeader ? { cookie: cookieHeader } : {} })
+    return response.ok ? await response.json() as T : null
+  } catch { return null }
+}
+
+export function getFamilyAdaptation() { return getLearningResource<FamilyAdaptation>('adaptation') }
+export async function getMaterialsCatalog() { return (await getLearningResource<MaterialsCatalogItem[]>('materials-catalog')) ?? [] }
+
 export type EvidenceSummary = {
   stableTargetIds: string[]
   reviewQueue: Array<{ id: string; title: string; reason: string }>
