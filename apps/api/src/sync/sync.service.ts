@@ -23,6 +23,12 @@ export class SyncService {
     return { version: this.packageChecksum(payload).slice(0, 16), checksum: this.packageChecksum(payload), sizeBytes: JSON.stringify(payload).length, payload }
   }
 
+  async packageBundle(parentId: string) {
+    const manifest = await this.packageManifest(parentId)
+    const publications = await this.prisma.publication.findMany({ where: { parentId, state: 'PUBLISHED', binding: { slot: { learnerEligible: true } } }, select: { id: true, snapshot: true } })
+    const body = Buffer.from(JSON.stringify({ manifest, publications }))
+    return { ...manifest, body, capacity: { requiredBytes: body.length, recommendedBytes: body.length * 2, maxBytes: 50 * 1024 * 1024 }, retentionDays: 30 }
+  }
   packageChecksum(body: unknown) {
     return createHash('sha256').update(JSON.stringify(body)).digest('hex')
   }

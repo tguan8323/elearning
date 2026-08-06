@@ -1,5 +1,5 @@
-import { Body, Controller, Get, Inject, Post, Query, Req } from '@nestjs/common'
-import type { Request } from 'express'
+import { Body, Controller, Get, Inject, Post, Query, Req, Res } from '@nestjs/common'
+import type { Request, Response } from 'express'
 
 import { ParentSessionService } from '../auth/parent-session.service'
 import { SyncService } from './sync.service'
@@ -23,7 +23,17 @@ export class SyncController {
     return this.sync.pull(parent.id, cursor)
   }
 
-  @Get('package')
+  @Get('package/download')
+  async packageDownload(@Req() request: Request, @Res() response: Response) {
+    const parent = await this.sessions.requireParent(request)
+    const bundle = await this.sync.packageBundle(parent.id)
+    response.setHeader('Cache-Control', 'private, no-store')
+    response.setHeader('Content-Type', 'application/json')
+    response.setHeader('Content-Disposition', `attachment; filename="family-english-${bundle.version}.json"`)
+    return response.send(bundle.body)
+  }
+
+
   async packageManifest(@Req() request: Request) { const parent = await this.sessions.requireParent(request); return this.sync.packageManifest(parent.id) }
 
   @Post('verify-package')

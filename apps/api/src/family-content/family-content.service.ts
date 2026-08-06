@@ -62,7 +62,7 @@ export class FamilyContentService {
   async list(parentId: string) {
     return this.prisma.familyAsset.findMany({
       where: { parentId },
-      include: { versions: { include: { bindings: { include: { publications: true, slot: true } } } }, },
+      include: { versions: { include: { audioReview: true, bindings: { include: { publications: true, slot: true } } } } },
       orderBy: { createdAt: 'desc' },
     })
   }
@@ -118,8 +118,17 @@ export class FamilyContentService {
     return this.prisma.publication.update({ where: { id: publicationId }, data: { state: 'WITHDRAWN', withdrawnAt: new Date() } })
   }
 
+  async publicationMedia(parentId: string, publicationId: string) {
+    const publication = await this.prisma.publication.findUnique({ where: { id: publicationId }, include: { version: true } })
+    if (!publication || publication.parentId !== parentId || publication.state !== 'PUBLISHED' || !publication.version.storageKey || !this.storage.get) throw new NotFoundException('媒体不存在')
+    if (publication.version.mimeType.startsWith('audio/')) {
+      const review = await this.prisma.audioReview.findUnique({ where: { assetVersionId: publication.versionId } })
+      if (review?.reviewState !== 'APPROVED') throw new NotFoundException('音频尚未审核')
+    }
+    return { mimeType: publication.version.mimeType, body: await this.storage.get(publication.version.storageKey) }
+  }
   async learnerPublished(parentId: string) {
-    return this.prisma.publication.findMany({ where: { parentId, state: 'PUBLISHED', binding: { slot: { learnerEligible: true } } }, select: { id: true, snapshot: true, publishedAt: true } })
+    return this.prisma.publication.findMany({ where: { parentId, state: 'PUBLISHED', binding: { slot: { learnerEligible: true }, version: { OR: [{ mimeType: { not: { startsWith: 'audio/' } } }, { audioReview: { reviewState: 'APPROVED' } }] } } }, select: { id: true, snapshot: true, publishedAt: true } })
   }
 
   async remove(parentId: string, assetId: string) {

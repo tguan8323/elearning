@@ -9,7 +9,7 @@ export function PublishedFamilyContent({ items }: { items: FamilyContentItem[] }
       {items.map((item) => (
         <article key={item.id}>
           <h3>{item.title}</h3>
-          {item.description ? <p>{item.description}</p> : null}
+          {item.mediaType === 'audio' || item.contentType === 'audio' ? <audio controls preload="none" src={`/api/family-content/publications/${item.id}/media`} /> : null}
         </article>
       ))}
     </section>

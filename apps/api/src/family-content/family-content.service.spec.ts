@@ -46,7 +46,7 @@ describe('FamilyContentService', () => {
   it('returns only active learner-eligible publications', async () => {
     prisma.publication.findMany.mockResolvedValue([])
     await service.learnerPublished('parent-1')
-    expect(prisma.publication.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { parentId: 'parent-1', state: 'PUBLISHED', binding: { slot: { learnerEligible: true } } } }))
+    expect(prisma.publication.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ parentId: 'parent-1', state: 'PUBLISHED', binding: expect.objectContaining({ slot: { learnerEligible: true }, version: expect.any(Object) }) }) }))
   })
 
   it('blocks deletion when any publication history references the asset', async () => {

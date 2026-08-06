@@ -27,4 +27,6 @@ export class FamilyContentController {
 export class LearnerFamilyContentController {
   constructor(@Inject(FamilyContentService) private readonly content: FamilyContentService, @Inject(ParentSessionService) private readonly sessions: ParentSessionService) {}
   @Get() async list(@Req() req: Request) { const session = await this.sessions.requireLearner(req); return this.content.learnerPublished(session.id) }
+  @Get(':publicationId/media') async media(@Req() req: Request, @Param('publicationId') id: string, @Res() response: Response) { const session = await this.sessions.requireLearner(req); const media = await this.content.publicationMedia(session.id, id); response.setHeader('Cache-Control', 'private, no-store'); response.setHeader('Content-Type', media.mimeType); return response.send(media.body) }
+
 }
