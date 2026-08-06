@@ -19,6 +19,8 @@ model ParentAccount {
   adaptation      FamilyAdaptation?
   deletionIntents LearnerDeletionIntent[]
   deletionTombstones LearnerDeletionTombstone[]
+  assets          FamilyAsset[]
+  publications    Publication[]
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 }
@@ -127,4 +129,92 @@ model LearningObservation {
   observedAt    DateTime        @default(now())
 
   @@index([learnerId, targetId, observedAt])
+}
+
+enum AssetUploadState {
+  METADATA_ONLY
+  UPLOADED
+}
+
+enum PublicationState {
+  PUBLISHED
+  WITHDRAWN
+}
+
+model FamilyAsset {
+  id              String           @id @default(cuid())
+  parent          ParentAccount    @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  parentId        String
+  title           String
+  mediaType       String
+  source          String
+  purpose         String
+  targetLanguage  String?
+  courseRefs      String[]
+  stimulusFeatures String[]
+  copyrightNotice String
+  versions        AssetVersion[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([parentId, createdAt])
+}
+
+model AssetVersion {
+  id            String           @id @default(cuid())
+  asset         FamilyAsset      @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  assetId       String
+  version       Int
+  mimeType      String
+  fileName      String
+  fileSize      Int
+  uploadState   AssetUploadState @default(METADATA_ONLY)
+  storageKey    String?
+  bindings      AssetBinding[]
+  publications  Publication[]
+  createdAt     DateTime         @default(now())
+
+  @@unique([assetId, version])
+  @@index([assetId])
+}
+
+model ContentSlot {
+  id               String         @id
+  title            String
+  purpose          String
+  acceptedMimeTypes String[]
+  maxFileSize      Int
+  learnerEligible  Boolean        @default(false)
+  bindings         AssetBinding[]
+}
+
+model AssetBinding {
+  id             String        @id @default(cuid())
+  version        AssetVersion  @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  versionId      String
+  slot           ContentSlot   @relation(fields: [slotId], references: [id], onDelete: Restrict)
+  slotId         String
+  previewSnapshot Json
+  publications   Publication[]
+  createdAt      DateTime      @default(now())
+
+  @@unique([versionId, slotId])
+  @@index([slotId])
+}
+
+model Publication {
+  id              String           @id @default(cuid())
+  parent          ParentAccount    @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  parentId        String
+  binding         AssetBinding     @relation(fields: [bindingId], references: [id], onDelete: Restrict)
+  bindingId       String
+  version         AssetVersion     @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  versionId       String
+  state           PublicationState @default(PUBLISHED)
+  snapshot        Json
+  publishedAt     DateTime         @default(now())
+  withdrawnAt     DateTime?
+
+  @@index([parentId, state])
+  @@index([bindingId])
 }
