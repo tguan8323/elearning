@@ -1,10 +1,10 @@
-import { Body, Controller, Get, Inject, Patch, Post, Req, UnauthorizedException } from '@nestjs/common'
+import { Body, Controller, Delete, Get, Inject, Patch, Post, Req, UnauthorizedException } from '@nestjs/common'
 import type { Request } from 'express'
 
 import { AuthService } from '../auth/auth.service'
 import { ParentSessionService } from '../auth/parent-session.service'
 import { CreateLearnerPipe } from './create-learner.pipe'
-import { UpdateLearnerPinPipe, UpdateLearnerPipe } from './learner-action.pipes'
+import { ConfirmLearnerDeletionPipe, ParentPasswordPipe, UpdateLearnerPinPipe, UpdateLearnerPipe } from './learner-action.pipes'
 import { LearnersService } from './learners.service'
 
 @Controller('learners')
@@ -40,6 +40,36 @@ export class LearnersController {
       throw new UnauthorizedException('邮箱或密码不正确')
     }
     return this.learners.updatePin(parent.id, input.pin)
+  }
+
+  @Post('current/export')
+  async exportData(@Req() request: Request, @Body(ParentPasswordPipe) input: { password: string }) {
+    const parent = await this.parentSession.requireParent(request)
+    await this.requirePassword(parent.id, input.password)
+    return this.learners.exportData(parent.id)
+  }
+
+  @Post('current/deletion-preview')
+  async previewDeletion(@Req() request: Request, @Body(ParentPasswordPipe) input: { password: string }) {
+    const parent = await this.parentSession.requireParent(request)
+    await this.requirePassword(parent.id, input.password)
+    return this.learners.previewDeletion(parent.id)
+  }
+
+  @Delete('current')
+  async deleteCurrent(
+    @Req() request: Request,
+    @Body(ConfirmLearnerDeletionPipe) input: { password: string; confirmationToken: string; confirm: true },
+  ) {
+    const parent = await this.parentSession.requireParent(request)
+    await this.requirePassword(parent.id, input.password)
+    return this.learners.confirmDeletion(parent.id, input.confirmationToken)
+  }
+
+  private async requirePassword(parentId: string, password: string) {
+    if (!(await this.auth.verifyParentPassword(parentId, password))) {
+      throw new UnauthorizedException('邮箱或密码不正确')
+    }
   }
 
   @Post()

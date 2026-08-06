@@ -9,7 +9,9 @@ function createPrismaMock() {
   return {
     learnerProfile: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
+      delete: vi.fn(),
     },
   }
 }
@@ -85,6 +87,25 @@ describe('LearnersService', () => {
       nickname: '小星',
       avatarId: 'fox',
     })
+  })
+
+  it('exports readable and machine-readable learner data without credential fields', async () => {
+    const service = new LearnersService({
+      learnerProfile: { findUnique: vi.fn().mockResolvedValue({
+        id: 'learner-1', nickname: '小星', avatarId: 'fox',
+        createdAt: new Date('2026-08-01T00:00:00Z'), updatedAt: new Date('2026-08-02T00:00:00Z'),
+        sessions: [{ id: 'session-1' }], observations: [{ id: 'observation-1' }],
+      }) },
+      familyAdaptation: { findUnique: vi.fn().mockResolvedValue(null) },
+    } as unknown as PrismaService)
+
+    const result = await service.exportData('parent-1')
+    expect(result.summary).toContain('1 条教学记录、1 条学习观察')
+    expect(result.teachingSessions).toEqual([{ id: 'session-1' }])
+    const serialized = JSON.stringify(result)
+    expect(serialized).not.toContain('password')
+    expect(serialized).not.toContain('pinHash')
+    expect(serialized).not.toContain('tokenHash')
   })
 
   it('returns 404 when no learner exists', async () => {

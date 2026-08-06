@@ -4,6 +4,8 @@ import {
   switchToLearnerRequestSchema,
   updateLearnerPinRequestSchema,
   updateLearnerRequestSchema,
+  parentPasswordRequestSchema,
+  confirmLearnerDeletionRequestSchema,
 } from '@family-english/contracts'
 
 type Parser = {
@@ -36,4 +38,14 @@ export class UpdateLearnerPipe implements PipeTransform {
 @Injectable()
 export class UpdateLearnerPinPipe implements PipeTransform {
   transform(value: unknown) { return parse(updateLearnerPinRequestSchema, value) }
+}
+
+@Injectable()
+export class ParentPasswordPipe implements PipeTransform {
+  transform(value: unknown) { return parse(parentPasswordRequestSchema, value) }
+}
+
+@Injectable()
+export class ConfirmLearnerDeletionPipe implements PipeTransform {
+  transform(value: unknown) { return parse(confirmLearnerDeletionRequestSchema, value) }
 }

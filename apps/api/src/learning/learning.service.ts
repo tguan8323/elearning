@@ -144,6 +144,14 @@ export class LearningService {
     return { stableTargetIds, reviewQueue: reviewQueue.slice(0, 5), trendSummary }
   }
 
+  async deleteSession(parentId: string, sessionId: string) {
+    const result = await this.prisma.teachingSession.deleteMany({
+      where: { id: sessionId, learner: { parentId } },
+    })
+    if (result.count === 0) throw new NotFoundException('教学记录不存在')
+    return { deleted: true, teachingSessionId: sessionId }
+  }
+
   async finishSession(parentId: string, sessionId: string, status: string) {
     const learner = await this.prisma.learnerProfile.findUnique({ where: { parentId }, select: { id: true } })
     if (!learner) throw new NotFoundException('尚未建立孩子学习身份')

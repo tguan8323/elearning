@@ -75,3 +75,25 @@ export const updateLearnerPinRequestSchema = z.object({
 
 export type UpdateLearnerRequest = z.infer<typeof updateLearnerRequestSchema>
 
+export const parentPasswordRequestSchema = z.object({ password: z.string().min(1) })
+export const confirmLearnerDeletionRequestSchema = z.object({
+  password: z.string().min(1),
+  confirmationToken: z.string().min(1),
+  confirm: z.literal(true),
+})
+export const learnerDeletionPreviewSchema = z.object({
+  learnerId: z.string(),
+  nickname: z.string(),
+  impact: z.object({ teachingSessions: z.number().int().nonnegative(), observations: z.number().int().nonnegative() }),
+  confirmationToken: z.string(),
+  expiresAt: z.string().datetime(),
+})
+export const familyDataExportSchema = z.object({
+  exportedAt: z.string().datetime(),
+  learner: learnerProfileSchema,
+  adaptation: z.record(z.string(), z.unknown()).nullable(),
+  teachingSessions: z.array(z.record(z.string(), z.unknown())),
+  observations: z.array(z.record(z.string(), z.unknown())),
+  summary: z.string(),
+})
+

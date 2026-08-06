@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Inject, Param, Patch, Post, Req } from '@nestjs/common'
+import { Body, Controller, Delete, Get, Inject, Param, Patch, Post, Req } from '@nestjs/common'
 import type { Request } from 'express'
 
 import { ParentSessionService } from '../auth/parent-session.service'
@@ -61,6 +61,12 @@ export class LearningController {
   async observe(@Req() request: Request, @Body() input: Parameters<LearningService['observe']>[1]) {
     const parent = await this.sessions.requireParent(request)
     return this.learning.observe(parent.id, input)
+  }
+
+  @Delete('sessions/:id')
+  async deleteSession(@Req() request: Request, @Param('id') sessionId: string) {
+    const parent = await this.sessions.requireParent(request)
+    return this.learning.deleteSession(parent.id, sessionId)
   }
 
   @Patch('sessions/:id')
