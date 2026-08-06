@@ -1,11 +1,26 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import type { Prisma } from '@prisma/client'
+import { existsSync, mkdirSync, promises as fs } from 'node:fs'
+import { join } from 'node:path'
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../database/prisma.service'
 import { COPYRIGHT_NOTICE } from './family-content.dto'
 
-export interface ObjectStorage { enabled: boolean; put(key: string, body: Buffer, mimeType: string): Promise<void> }
+export interface ObjectStorage { enabled: boolean; put(key: string, body: Buffer, mimeType: string): Promise<void>; get?(key: string): Promise<Buffer> }
 export const OBJECT_STORAGE = Symbol('OBJECT_STORAGE')
+
+@Injectable()
+export class LocalObjectStorage implements ObjectStorage {
+  readonly enabled = true
+  private readonly root = process.env.OBJECT_STORAGE_PATH ?? join(process.cwd(), 'data', 'objects')
+  async put(key: string, body: Buffer): Promise<void> {
+    const path = join(this.root, key)
+    mkdirSync(join(path, '..'), { recursive: true })
+    await fs.writeFile(path, body, { flag: 'wx' })
+  }
+  async get(key: string) { return fs.readFile(join(this.root, key)) }
+  has(key: string) { return existsSync(join(this.root, key)) }
+}
 
 @Injectable()
 export class MetadataOnlyStorage implements ObjectStorage {
@@ -26,7 +41,30 @@ export class FamilyContentService {
     }, include: { versions: true } })
   }
 
-  async list(parentId: string) { return this.prisma.familyAsset.findMany({ where: { parentId }, include: { versions: true }, orderBy: { createdAt: 'desc' } }) }
+  async preview(parentId: string, versionId: string) {
+    const version = await this.ownedVersion(parentId, versionId)
+    if (version.uploadState !== 'UPLOADED' || !version.storageKey || !this.storage.get) throw new NotFoundException('文件尚未上传')
+    return { mimeType: version.mimeType, body: await this.storage.get(version.storageKey) }
+  }
+
+  async upload(parentId: string, versionId: string, body: Buffer) {
+    const version = await this.ownedVersion(parentId, versionId)
+    if (body.length !== version.fileSize) throw new BadRequestException('实际文件大小与声明不一致')
+    if (!this.matchesMagic(version.mimeType, body)) throw new BadRequestException('文件魔数与声明的 MIME 类型不一致')
+    const storageKey = `${parentId}/${version.assetId}/${version.id}`
+    await this.storage.put(storageKey, body, version.mimeType)
+    return this.prisma.assetVersion.update({ where: { id: version.id }, data: { storageKey, uploadState: 'UPLOADED', fileSize: body.length } })
+  }
+
+  private matchesMagic(mime: string, body: Buffer) {
+    if (mime === 'image/png') return body.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]))
+    if (mime === 'image/jpeg') return body.subarray(0, 3).equals(Buffer.from([255,216,255]))
+    if (mime === 'application/pdf') return body.subarray(0, 5).toString() === '%PDF-'
+    if (mime === 'audio/mpeg') return body.subarray(0, 3).toString() === 'ID3' || (body[0] === 0xff && (body[1] & 0xe0) === 0xe0)
+    if (mime === 'audio/wav') return body.subarray(0, 4).toString() === 'RIFF' && body.subarray(8, 12).toString() === 'WAVE'
+    if (mime === 'video/mp4') return body.subarray(4, 8).toString() === 'ftyp'
+    return body.length > 0
+  }
 
   async bind(parentId: string, versionId: string, slotId: string) {
     const version = await this.ownedVersion(parentId, versionId)
@@ -77,4 +115,4 @@ export class FamilyContentService {
   private snapshot(asset: any, version: any, slot: any) { return { assetId: asset.id, versionId: version.id, title: asset.title, mediaType: asset.mediaType, source: asset.source, purpose: asset.purpose, targetLanguage: asset.targetLanguage, courseRefs: asset.courseRefs, stimulusFeatures: asset.stimulusFeatures, copyrightNotice: asset.copyrightNotice, mimeType: version.mimeType, fileName: version.fileName, fileSize: version.fileSize, storageKey: version.storageKey, slotId: slot.id, slotTitle: slot.title } }
 }
 
-export const storageProvider = { provide: OBJECT_STORAGE, useFactory: () => new MetadataOnlyStorage() }
+export const storageProvider = { provide: OBJECT_STORAGE, useFactory: () => new LocalObjectStorage() }
