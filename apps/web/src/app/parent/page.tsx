@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { getCurrentLearner, getCurrentParent, getEvidenceSummary, getFamilyAdaptation, getFamilyContentCatalog, getLearningPlan, getMaterialsCatalog, getSessionMode } from '@/lib/api'
 import { FamilyAdaptationForm } from './family-adaptation-form'
 import { CreateLearnerForm } from './create-learner-form'
+import { DataGovernanceCenter } from './data-governance-center'
 import { FamilyContentManager } from './family-content-manager'
 import { LearnerManagement } from './learner-management'
 import { LogoutButton } from './logout-button'
@@ -35,6 +36,7 @@ export default async function ParentPage() {
             <p>昵称：{learner.nickname}</p>
             <p>头像：{learner.avatarId}</p>
             <LearnerManagement learner={learner} />
+            <DataGovernanceCenter />
             {evidence ? (
               <section className="todayPlan" aria-labelledby="review-title">
                 <p className="eyebrow">学习证据回顾</p>
