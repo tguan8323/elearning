@@ -54,6 +54,18 @@ export class LearningController {
     return this.learning.getPlan(parent.id)
   }
 
+  @Get('sessions')
+  async sessionsList(@Req() request: Request) {
+    const parent = await this.sessions.requireParent(request)
+    return this.learning.listSessions(parent.id)
+  }
+
+  @Patch('observations/:id/note')
+  async updateObservationNote(@Req() request: Request, @Param('id') observationId: string, @Body() input: { note?: string }) {
+    const parent = await this.sessions.requireParent(request)
+    return this.learning.updateObservationNote(parent.id, observationId, input.note)
+  }
+
   @Post('sessions')
   async start(@Req() request: Request, @Body() input: { clientId: string; targetId: string }) {
     const parent = await this.sessions.requireParent(request)

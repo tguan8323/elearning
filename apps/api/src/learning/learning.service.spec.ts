@@ -7,8 +7,8 @@ import { LearningService } from './learning.service'
 function mockPrisma() {
   return {
     learnerProfile: { findUnique: vi.fn() },
-    teachingSession: { findFirst: vi.fn(), upsert: vi.fn(), update: vi.fn() },
-    learningObservation: { findMany: vi.fn(), upsert: vi.fn() },
+    teachingSession: { findFirst: vi.fn(), findMany: vi.fn(), upsert: vi.fn(), update: vi.fn() },
+    learningObservation: { findMany: vi.fn(), findFirst: vi.fn(), upsert: vi.fn(), update: vi.fn() },
     familyAdaptation: { upsert: vi.fn(), update: vi.fn() },
   }
 }
@@ -61,6 +61,16 @@ describe('LearningService evidence and practice', () => {
     expect(prisma.learningObservation.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { learnerId: 'learner-1', session: { status: 'COMPLETED' } },
     }))
+  })
+
+  it('lists owned sessions and trims a corrected observation note', async () => {
+    prisma.teachingSession.findMany.mockResolvedValue([])
+    await expect(service.listSessions('parent-1')).resolves.toEqual([])
+    expect(prisma.teachingSession.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { learnerId: 'learner-1' }, take: 100 }))
+    prisma.learningObservation.findFirst.mockResolvedValue({ id: 'observation-1' })
+    prisma.learningObservation.update.mockResolvedValue({ id: 'observation-1', note: 'note' })
+    await service.updateObservationNote('parent-1', 'observation-1', ' note ')
+    expect(prisma.learningObservation.update).toHaveBeenCalledWith({ where: { id: 'observation-1' }, data: { note: 'note' } })
   })
 
   it('strictly rejects an observation outside its owned session or vocabulary', async () => {

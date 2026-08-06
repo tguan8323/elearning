@@ -7,6 +7,7 @@ import { DataGovernanceCenter } from './data-governance-center'
 import { FamilyContentManager } from './family-content-manager'
 import { LearnerManagement } from './learner-management'
 import { LogoutButton } from './logout-button'
+import { TeachingRecords } from './teaching-records'
 import { StartLesson } from './start-lesson'
 
 export default async function ParentPage() {
@@ -68,6 +69,7 @@ export default async function ParentPage() {
           </section>
         )}
         {adaptation ? <FamilyAdaptationForm initial={adaptation} catalog={materialsCatalog} /> : null}
+        {learner ? <TeachingRecords /> : null}
         <FamilyContentManager items={familyContent} />
         <LogoutButton />
       </section>

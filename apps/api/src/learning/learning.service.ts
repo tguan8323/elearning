@@ -95,6 +95,21 @@ export class LearningService {
     }
   }
 
+  async listSessions(parentId: string) {
+    const learner = await this.prisma.learnerProfile.findUnique({ where: { parentId }, select: { id: true } })
+    if (!learner) throw new NotFoundException('尚未建立孩子学习身份')
+    return this.prisma.teachingSession.findMany({ where: { learnerId: learner.id }, include: { observations: true }, orderBy: { createdAt: 'desc' }, take: 100 })
+  }
+
+  async updateObservationNote(parentId: string, observationId: string, note?: string) {
+    if (note !== undefined && note.length > 500) throw new BadRequestException('备注不能超过 500 个字符')
+    const learner = await this.prisma.learnerProfile.findUnique({ where: { parentId }, select: { id: true } })
+    if (!learner) throw new NotFoundException('尚未建立孩子学习身份')
+    const observation = await this.prisma.learningObservation.findFirst({ where: { id: observationId, learnerId: learner.id } })
+    if (!observation) throw new NotFoundException('观察记录不存在')
+    return this.prisma.learningObservation.update({ where: { id: observationId }, data: { note: note?.trim() || null } })
+  }
+
   async startSession(parentId: string, clientId: string, targetId: string) {
     const learner = await this.prisma.learnerProfile.findUnique({ where: { parentId }, select: { id: true } })
     const target = curriculumTargets.find((item) => item.id === targetId)
