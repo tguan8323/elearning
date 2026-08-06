@@ -10,44 +10,46 @@ datasource db {
 // Business models are added incrementally from the approved domain documents.
 
 model ParentAccount {
-  id              String          @id @default(cuid())
-  familySlot      String          @unique @default("primary-family")
-  email           String          @unique
-  passwordHash String
-  sessions        ParentSession[]
-  learner         LearnerProfile?
-  adaptation      FamilyAdaptation?
-  deletionIntents LearnerDeletionIntent[]
+  id                 String                     @id @default(cuid())
+  familySlot         String                     @unique @default("primary-family")
+  email              String                     @unique
+  passwordHash       String
+  sessions           ParentSession[]
+  learner            LearnerProfile?
+  adaptation         FamilyAdaptation?
+  deletionIntents    LearnerDeletionIntent[]
   deletionTombstones LearnerDeletionTombstone[]
-  assets          FamilyAsset[]
-  publications    Publication[]
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  assets             FamilyAsset[]
+  publications       Publication[]
+  syncOperations     SyncOperation[]
+  syncChanges        SyncChange[]
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
 }
 
 model LearnerProfile {
-  id         String        @id @default(cuid())
-  parent     ParentAccount @relation(fields: [parentId], references: [id], onDelete: Cascade)
-  parentId   String        @unique
-  nickname   String
-  avatarId   String
-  pinHash    String
-  sessions   TeachingSession[]
+  id           String                @id @default(cuid())
+  parent       ParentAccount         @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  parentId     String                @unique
+  nickname     String
+  avatarId     String
+  pinHash      String
+  sessions     TeachingSession[]
   observations LearningObservation[]
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
 }
 
 model ParentSession {
-  id          String        @id @default(cuid())
-  tokenHash   String        @unique
-  parent      ParentAccount @relation(fields: [parentId], references: [id], onDelete: Cascade)
-  parentId    String
-  mode        SessionMode   @default(PARENT)
-  expiresAt   DateTime
-  lastSeenAt  DateTime      @default(now())
-  revokedAt   DateTime?
-  createdAt   DateTime      @default(now())
+  id         String        @id @default(cuid())
+  tokenHash  String        @unique
+  parent     ParentAccount @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  parentId   String
+  mode       SessionMode   @default(PARENT)
+  expiresAt  DateTime
+  lastSeenAt DateTime      @default(now())
+  revokedAt  DateTime?
+  createdAt  DateTime      @default(now())
 
   @@index([parentId])
   @@index([expiresAt])
@@ -75,58 +77,85 @@ model FamilyAdaptation {
 }
 
 model LearnerDeletionIntent {
-  id          String        @id @default(cuid())
-  parent      ParentAccount @relation(fields: [parentId], references: [id], onDelete: Cascade)
-  parentId    String
-  learnerId   String
-  tokenHash   String        @unique
-  expiresAt   DateTime
-  createdAt   DateTime      @default(now())
+  id        String        @id @default(cuid())
+  parent    ParentAccount @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  parentId  String
+  learnerId String
+  tokenHash String        @unique
+  expiresAt DateTime
+  createdAt DateTime      @default(now())
 
   @@index([parentId, learnerId])
 }
 
 model LearnerDeletionTombstone {
-  id                      String        @id @default(cuid())
-  parent                  ParentAccount @relation(fields: [parentId], references: [id], onDelete: Cascade)
-  parentId                String
-  deletedLearnerId        String
-  teachingSessionCount    Int
-  observationCount        Int
-  deletedAt               DateTime      @default(now())
+  id                   String        @id @default(cuid())
+  parent               ParentAccount @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  parentId             String
+  deletedLearnerId     String
+  teachingSessionCount Int
+  observationCount     Int
+  deletedAt            DateTime      @default(now())
 
   @@index([parentId, deletedAt])
 }
 
+model SyncOperation {
+  id          String        @id @default(cuid())
+  parent      ParentAccount @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  parentId    String
+  operationId String
+  result      Json
+  appliedAt   DateTime      @default(now())
+
+  @@unique([parentId, operationId])
+  @@index([parentId, appliedAt])
+}
+
+model SyncChange {
+  sequence   BigInt        @id @default(autoincrement())
+  parent     ParentAccount @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  parentId   String
+  recordType String
+  recordId   String
+  version    Int
+  deleted    Boolean       @default(false)
+  payload    Json?
+  changedAt  DateTime      @default(now())
+
+  @@index([parentId, sequence])
+  @@index([parentId, recordType, recordId])
+}
+
 model TeachingSession {
-  id           String         @id @default(cuid())
-  clientId     String         @unique
-  learner      LearnerProfile @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  id           String                @id @default(cuid())
+  clientId     String                @unique
+  learner      LearnerProfile        @relation(fields: [learnerId], references: [id], onDelete: Cascade)
   learnerId    String
   targetId     String
   targetTitle  String
-  status       String         @default("PLANNED")
+  status       String                @default("PLANNED")
   startedAt    DateTime?
   endedAt      DateTime?
-  createdAt    DateTime       @default(now())
+  createdAt    DateTime              @default(now())
   observations LearningObservation[]
 
   @@index([learnerId, createdAt])
 }
 
 model LearningObservation {
-  id            String          @id @default(cuid())
-  clientId      String          @unique
-  learner       LearnerProfile  @relation(fields: [learnerId], references: [id], onDelete: Cascade)
-  learnerId     String
-  session       TeachingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  sessionId     String
-  targetId      String
-  outcome       String
-  promptLevel   String?
+  id              String          @id @default(cuid())
+  clientId        String          @unique
+  learner         LearnerProfile  @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  learnerId       String
+  session         TeachingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId       String
+  targetId        String
+  outcome         String
+  promptLevel     String?
   materialVariant String?
-  note          String?
-  observedAt    DateTime        @default(now())
+  note            String?
+  observedAt      DateTime        @default(now())
 
   @@index([learnerId, targetId, observedAt])
 }
@@ -142,78 +171,78 @@ enum PublicationState {
 }
 
 model FamilyAsset {
-  id              String           @id @default(cuid())
-  parent          ParentAccount    @relation(fields: [parentId], references: [id], onDelete: Cascade)
-  parentId        String
-  title           String
-  mediaType       String
-  source          String
-  purpose         String
-  targetLanguage  String?
-  courseRefs      String[]
+  id               String         @id @default(cuid())
+  parent           ParentAccount  @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  parentId         String
+  title            String
+  mediaType        String
+  source           String
+  purpose          String
+  targetLanguage   String?
+  courseRefs       String[]
   stimulusFeatures String[]
-  copyrightNotice String
-  versions        AssetVersion[]
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  copyrightNotice  String
+  versions         AssetVersion[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
   @@index([parentId, createdAt])
 }
 
 model AssetVersion {
-  id            String           @id @default(cuid())
-  asset         FamilyAsset      @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  assetId       String
-  version       Int
-  mimeType      String
-  fileName      String
-  fileSize      Int
-  uploadState   AssetUploadState @default(METADATA_ONLY)
-  storageKey    String?
-  bindings      AssetBinding[]
-  publications  Publication[]
-  createdAt     DateTime         @default(now())
+  id           String           @id @default(cuid())
+  asset        FamilyAsset      @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  assetId      String
+  version      Int
+  mimeType     String
+  fileName     String
+  fileSize     Int
+  uploadState  AssetUploadState @default(METADATA_ONLY)
+  storageKey   String?
+  bindings     AssetBinding[]
+  publications Publication[]
+  createdAt    DateTime         @default(now())
 
   @@unique([assetId, version])
   @@index([assetId])
 }
 
 model ContentSlot {
-  id               String         @id
-  title            String
-  purpose          String
+  id                String         @id
+  title             String
+  purpose           String
   acceptedMimeTypes String[]
-  maxFileSize      Int
-  learnerEligible  Boolean        @default(false)
-  bindings         AssetBinding[]
+  maxFileSize       Int
+  learnerEligible   Boolean        @default(false)
+  bindings          AssetBinding[]
 }
 
 model AssetBinding {
-  id             String        @id @default(cuid())
-  version        AssetVersion  @relation(fields: [versionId], references: [id], onDelete: Restrict)
-  versionId      String
-  slot           ContentSlot   @relation(fields: [slotId], references: [id], onDelete: Restrict)
-  slotId         String
+  id              String        @id @default(cuid())
+  version         AssetVersion  @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  versionId       String
+  slot            ContentSlot   @relation(fields: [slotId], references: [id], onDelete: Restrict)
+  slotId          String
   previewSnapshot Json
-  publications   Publication[]
-  createdAt      DateTime      @default(now())
+  publications    Publication[]
+  createdAt       DateTime      @default(now())
 
   @@unique([versionId, slotId])
   @@index([slotId])
 }
 
 model Publication {
-  id              String           @id @default(cuid())
-  parent          ParentAccount    @relation(fields: [parentId], references: [id], onDelete: Cascade)
-  parentId        String
-  binding         AssetBinding     @relation(fields: [bindingId], references: [id], onDelete: Restrict)
-  bindingId       String
-  version         AssetVersion     @relation(fields: [versionId], references: [id], onDelete: Restrict)
-  versionId       String
-  state           PublicationState @default(PUBLISHED)
-  snapshot        Json
-  publishedAt     DateTime         @default(now())
-  withdrawnAt     DateTime?
+  id          String           @id @default(cuid())
+  parent      ParentAccount    @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  parentId    String
+  binding     AssetBinding     @relation(fields: [bindingId], references: [id], onDelete: Restrict)
+  bindingId   String
+  version     AssetVersion     @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  versionId   String
+  state       PublicationState @default(PUBLISHED)
+  snapshot    Json
+  publishedAt DateTime         @default(now())
+  withdrawnAt DateTime?
 
   @@index([parentId, state])
   @@index([bindingId])

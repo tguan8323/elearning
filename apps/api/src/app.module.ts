@@ -7,6 +7,7 @@ import { FamilyContentModule } from './family-content/family-content.module'
 import { HealthModule } from './health/health.module'
 import { LearningModule } from './learning/learning.module'
 import { LearnersModule } from './learners/learners.module'
+import { SyncModule } from './sync/sync.module'
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { LearnersModule } from './learners/learners.module'
     LearnersModule,
     FamilyContentModule,
     LearningModule,
+    SyncModule,
     HealthModule,
   ],
 })
