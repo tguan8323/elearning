@@ -98,7 +98,9 @@ export async function getEvidenceSummary(): Promise<EvidenceSummary | null> {
 }
 
 export async function getLearningPlan(): Promise<{
-  target: { id: string; title: string; parentScript: string[]; materials: string[] }
+  target: { id: string; title: string; parentScript: string[]; materials: string[] } | null
+  override: { mode: 'skip' | 'light_contact' | 'specified_ort' | 'review_only'; reason: string; specifiedOrt?: string } | null
+  reason: string
   review: Array<{ id: string; title: string }>
   upcoming: Array<{ id: string; title: string }>
 } | null> {

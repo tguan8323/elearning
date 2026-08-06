@@ -11,7 +11,7 @@ describe('FamilyContentService', () => {
   let prisma: any
   let service: FamilyContentService
   beforeEach(() => {
-    prisma = { familyAsset: { create: vi.fn(), findMany: vi.fn(), findUnique: vi.fn(), delete: vi.fn() }, assetVersion: { findUnique: vi.fn() }, contentSlot: { findUnique: vi.fn() }, assetBinding: { create: vi.fn(), findUnique: vi.fn() }, publication: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), findMany: vi.fn() } }
+    prisma = { familyAsset: { create: vi.fn(), findMany: vi.fn(), findUnique: vi.fn(), delete: vi.fn() }, assetVersion: { findUnique: vi.fn() }, contentSlot: { findUnique: vi.fn() }, assetBinding: { create: vi.fn(), findUnique: vi.fn() }, publication: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), findMany: vi.fn() }, audioReview: { upsert: vi.fn(), findUnique: vi.fn() } }
     service = new FamilyContentService(prisma, { enabled: false, put: vi.fn() })
   })
 

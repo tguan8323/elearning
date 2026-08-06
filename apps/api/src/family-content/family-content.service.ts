@@ -42,6 +42,14 @@ export class FamilyContentService {
     ]
   }
 
+  async reviewAudio(parentId: string, versionId: string, reviewState: 'APPROVED' | 'REJECTED', reviewerNote?: string) {
+    const version = await this.ownedVersion(parentId, versionId)
+    if (!['audio/mpeg', 'audio/wav'].includes(version.mimeType)) throw new BadRequestException('只有音频版本可以审核')
+    return this.prisma.audioReview.upsert({ where: { assetVersionId: versionId }, update: { reviewState, reviewerNote, accent: 'en-US', reviewedAt: new Date() }, create: { id: `${versionId}-review`, assetVersionId: versionId, reviewState, reviewerNote, accent: 'en-US', reviewedAt: new Date() } })
+  }
+
+  async audioReview(parentId: string, versionId: string) { const version = await this.ownedVersion(parentId, versionId); return this.prisma.audioReview.findUnique({ where: { assetVersionId: version.id } }) }
+
   async catalog(parentId: string, input: any) {
     return this.prisma.familyAsset.create({ data: {
       parentId, title: input.title, mediaType: input.mediaType, source: input.source, purpose: input.purpose,
@@ -94,11 +102,12 @@ export class FamilyContentService {
   }
 
   async publish(parentId: string, bindingId: string) {
-    const binding = await this.prisma.assetBinding.findUnique({ where: { id: bindingId }, include: { version: { include: { asset: true } }, slot: true } })
+    const binding = await this.prisma.assetBinding.findUnique({ where: { id: bindingId }, include: { version: { include: { asset: true, audioReview: true } }, slot: true } })
     if (!binding) throw new NotFoundException('绑定不存在')
     if (binding.version.asset.parentId !== parentId) throw new ForbiddenException('不能访问其他家庭的内容')
     if (!binding.slot.learnerEligible) throw new BadRequestException('此插槽不允许发布到孩子页面')
     if (binding.version.uploadState !== 'UPLOADED') throw new BadRequestException('文件尚未真实上传，不能发布')
+    if (binding.version.mimeType.startsWith('audio/') && binding.version.audioReview?.reviewState !== 'APPROVED') throw new BadRequestException('音频必须先通过家长审核才能发布')
     return this.prisma.publication.create({ data: { parentId, bindingId, versionId: binding.versionId, snapshot: binding.previewSnapshot as Prisma.InputJsonValue } })
   }
 

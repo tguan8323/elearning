@@ -7,6 +7,8 @@ import { DataGovernanceCenter } from './data-governance-center'
 import { FamilyContentManager } from './family-content-manager'
 import { LearnerManagement } from './learner-management'
 import { LogoutButton } from './logout-button'
+import { OfflinePackage } from './offline-package'
+import { SyncStatus } from './sync-status'
 import { TeachingRecords } from './teaching-records'
 import { StartLesson } from './start-lesson'
 
@@ -51,13 +53,16 @@ export default async function ParentPage() {
             {plan ? (
               <section className="todayPlan" aria-labelledby="today-title">
                 <p className="eyebrow">今日建议</p>
-                <h2 id="today-title">{plan.target.title}</h2>
-                <p>只引入这一个主要新目标。</p>
-                <h3>准备教具</h3>
-                <ul>{plan.target.materials.map((item) => <li key={item}>{item}</li>)}</ul>
-                <h3>家长可以这样说</h3>
-                <ul>{plan.target.parentScript.map((line) => <li key={line}>{line}</li>)}</ul>
-                <StartLesson target={plan.target} />
+                <h2 id="today-title">{plan.target?.title ?? '今天不引入新目标'}</h2>
+                <p>{plan.reason}</p>
+                {plan.target ? <>
+                  <p>{plan.override?.mode === 'light_contact' ? '只做轻量接触，不要求掌握。' : '只引入这一个主要新目标。'}</p>
+                  <h3>准备教具</h3>
+                  <ul>{plan.target.materials.map((item) => <li key={item}>{item}</li>)}</ul>
+                  <h3>家长可以这样说</h3>
+                  <ul>{plan.target.parentScript.map((line) => <li key={line}>{line}</li>)}</ul>
+                  <StartLesson target={plan.target} />
+                </> : <p>可以从下方回顾建议中选择熟悉内容，或平静结束本次活动。</p>}
               </section>
             ) : null}
           </section>
@@ -69,6 +74,8 @@ export default async function ParentPage() {
           </section>
         )}
         {adaptation ? <FamilyAdaptationForm initial={adaptation} catalog={materialsCatalog} /> : null}
+        {learner ? <OfflinePackage /> : null}
+        {learner ? <SyncStatus /> : null}
         {learner ? <TeachingRecords /> : null}
         <FamilyContentManager items={familyContent} />
         <LogoutButton />

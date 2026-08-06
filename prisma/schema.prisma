@@ -72,6 +72,8 @@ model FamilyAdaptation {
   interests          String[]
   excludedThemes     String[]
   availableMaterials String[]
+  planOverride       Json?
+  structuredGuide    Json?
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 }
@@ -170,6 +172,16 @@ enum PublicationState {
   WITHDRAWN
 }
 
+model AudioReview {
+  id           String   @id @default(cuid())
+  assetVersionId String @unique
+  assetVersion AssetVersion @relation(fields: [assetVersionId], references: [id], onDelete: Cascade)
+  accent       String
+  reviewState  String
+  reviewerNote String?
+  reviewedAt   DateTime?
+}
+
 model FamilyAsset {
   id               String         @id @default(cuid())
   parent           ParentAccount  @relation(fields: [parentId], references: [id], onDelete: Cascade)
@@ -201,6 +213,7 @@ model AssetVersion {
   storageKey   String?
   bindings     AssetBinding[]
   publications Publication[]
+  audioReview  AudioReview?
   createdAt    DateTime         @default(now())
 
   @@unique([assetId, version])

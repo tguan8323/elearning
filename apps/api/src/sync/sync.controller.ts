@@ -23,6 +23,9 @@ export class SyncController {
     return this.sync.pull(parent.id, cursor)
   }
 
+  @Get('package')
+  async packageManifest(@Req() request: Request) { const parent = await this.sessions.requireParent(request); return this.sync.packageManifest(parent.id) }
+
   @Post('verify-package')
   async verifyPackage(@Req() request: Request, @Body() input: { payload: unknown; checksum: string }) {
     await this.sessions.requireParent(request)

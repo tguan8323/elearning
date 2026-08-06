@@ -62,6 +62,28 @@ export async function applyPulledChanges(changes: Array<LocalRecord & { sequence
   })
 }
 
+export async function pendingOperationCount() {
+  const db = await openOfflineDatabase()
+  const count = await requestResult(db.transaction('operations').objectStore('operations').count())
+  db.close()
+  return count
+}
+
+export async function readSyncCursor() {
+  const db = await openOfflineDatabase()
+  const cursor = await requestResult(db.transaction('metadata').objectStore('metadata').get('cursor')) as string | undefined
+  db.close()
+  return cursor ?? '0'
+}
+
+export async function pullChanges(fetcher: typeof fetch = fetch) {
+  const cursor = await readSyncCursor()
+  const response = await fetcher(`/api/sync/changes?cursor=${encodeURIComponent(cursor)}`, { credentials: 'include', cache: 'no-store' })
+  if (!response.ok) throw new Error(`拉取失败：${response.status}`)
+  const body = await response.json() as { changes: Array<LocalRecord & { sequence: string }>; cursor: string }
+  await applyPulledChanges(body.changes, body.cursor)
+  return body.changes.length
+}
 export async function replayQueue(fetcher: typeof fetch = fetch) {
   const db = await openOfflineDatabase()
   const operations = await requestResult(db.transaction('operations').objectStore('operations').getAll()) as OfflineOperation[]

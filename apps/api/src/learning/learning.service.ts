@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client'
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { curriculumTargets, curriculumVersion, phonicsGroupCount } from './curriculum.data'
 import { PrismaService } from '../database/prisma.service'
@@ -50,9 +51,18 @@ export class LearningService {
   async updateAdaptation(parentId: string, input: UpdateFamilyAdaptationDto) {
     await this.getAdaptation(parentId)
     const clean = (items: string[]) => [...new Set(items.map((item) => item.trim()).filter(Boolean))]
+    const planOverride = input.planOverride ? { ...input.planOverride, reason: input.planOverride.reason.trim(), specifiedOrt: input.planOverride.specifiedOrt?.trim() || undefined } : null
+    if (planOverride && !planOverride.reason) throw new BadRequestException('计划覆盖必须记录原因')
+    if (planOverride?.mode === 'specified_ort' && !planOverride.specifiedOrt) throw new BadRequestException('指定 ORT 模式必须填写书名')
+    const guide = input.structuredGuide ?? DEFAULT_ADAPTATION.structuredGuide
+    const structuredGuide = {
+      actions: clean(guide.actions), praisePhrases: clean(guide.praisePhrases), substituteActivities: clean(guide.substituteActivities), objectInventory: clean(guide.objectInventory),
+      ortRecords: guide.ortRecords.map((item) => ({ title: item.title.trim(), level: item.level.trim(), context: item.context.trim(), interactionGoal: item.interactionGoal.trim() })),
+    }
+    if (structuredGuide.ortRecords.some((item) => Object.values(item).some((field) => !field))) throw new BadRequestException('ORT 记录的书名、级别、情境和互动目标均不能为空')
     return this.prisma.familyAdaptation.update({
       where: { parentId },
-      data: { ...input, accent: 'en-US', interests: clean(input.interests), excludedThemes: clean(input.excludedThemes), availableMaterials: clean(input.availableMaterials) },
+      data: { ...input, accent: 'en-US', interests: clean(input.interests), excludedThemes: clean(input.excludedThemes), availableMaterials: clean(input.availableMaterials), planOverride: planOverride ?? Prisma.JsonNull, structuredGuide },
     })
   }
 
@@ -71,11 +81,12 @@ export class LearningService {
   async getPlan(parentId: string) {
     const learner = await this.prisma.learnerProfile.findUnique({ where: { parentId }, select: { id: true } })
     if (!learner) throw new NotFoundException('尚未建立孩子学习身份')
+    const adaptation = await this.getAdaptation(parentId)
     const observations = await this.prisma.learningObservation.findMany({
       where: { learnerId: learner.id }, orderBy: { observedAt: 'desc' }, take: 50,
     })
     const introduced = new Set(observations.map((item) => item.targetId))
-    const target = curriculumTargets.find((item) =>
+    const systemTarget = curriculumTargets.find((item) =>
       !introduced.has(item.id) && item.prerequisiteIds.every((id) => introduced.has(id)),
     ) ?? curriculumTargets[0]
     const review = observations
@@ -83,13 +94,14 @@ export class LearningService {
       .slice(0, 3)
       .map((item) => curriculumTargets.find((targetItem) => targetItem.id === item.targetId))
       .filter((item) => item !== undefined)
+    const override = adaptation.planOverride as { mode?: string; reason?: string; specifiedOrt?: string } | null
+    const target = override?.mode === 'skip' || override?.mode === 'review_only' ? null
+      : override?.mode === 'specified_ort' ? { ...systemTarget, title: override.specifiedOrt?.trim() || '指定 ORT 阅读' }
+      : systemTarget
     return {
-      curriculumVersion,
-      phonicsGroupCount,
-      target,
-      reason: review.length > 0
-        ? '先保留少量回顾，再引入一个满足前置条件的新目标。'
-        : '这是当前满足前置条件的下一个新目标。',
+      curriculumVersion, phonicsGroupCount, target,
+      override: override ?? null,
+      reason: override?.reason || (review.length > 0 ? '先保留少量回顾，再引入一个满足前置条件的新目标。' : '这是当前满足前置条件的下一个新目标。'),
       review,
       upcoming: curriculumTargets.filter((item) => !introduced.has(item.id)).slice(0, 5),
     }
