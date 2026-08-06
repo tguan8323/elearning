@@ -153,6 +153,46 @@ h1 {
   text-align: center;
 }
 
+.practiceActivity {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.practicePrompt,
+.practiceResponse {
+  margin: 0;
+  font-size: clamp(1.35rem, 3vw, 2rem);
+  line-height: 1.5;
+}
+
+.learnerActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.learnerAction {
+  min-height: 5rem;
+  margin: 0;
+  padding: 1rem;
+  font-size: clamp(1.2rem, 2.5vw, 1.6rem);
+  touch-action: manipulation;
+}
+
+.practiceResponse {
+  min-height: 4rem;
+  border-radius: var(--calm-radius-control);
+  background: var(--calm-color-status);
+  padding: 1rem;
+}
+
+@media (max-width: 36rem) {
+  .learnerActions {
+    grid-template-columns: 1fr;
+  }
+}
+
 .avatarDisplay {
   margin: 0 0 1rem;
   font-size: 4rem;

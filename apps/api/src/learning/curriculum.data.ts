@@ -10,11 +10,16 @@ export type CurriculumTarget = {
   parentScript: string[]
   materials: string[]
   prerequisiteIds: string[]
+  independentPractice?: {
+    title: string
+    prompt: string
+    choices: string[]
+  }
 }
 
 const participationTargets: CurriculumTarget[] = [
-  { id: 'participation-ready', title: 'Ready / Look / Listen', strand: 'participation', parentScript: ['Ready?', 'Look.', 'Listen.', 'All done.'], materials: ['一件孩子喜欢的实物'], prerequisiteIds: [] },
-  { id: 'functional-help', title: 'Help / Stop / Break', strand: 'functional', parentScript: ['Help, please.', 'Stop.', 'Break, please.', 'All done.'], materials: ['原创表达卡或手势'], prerequisiteIds: [] },
+  { id: 'participation-ready', title: 'Ready / Look / Listen', strand: 'participation', parentScript: ['Ready?', 'Look.', 'Listen.', 'All done.'], materials: ['一件孩子喜欢的实物'], prerequisiteIds: [], independentPractice: { title: 'Look and listen', prompt: 'Choose what you want to say.', choices: ['Help, please.', 'Stop.', 'Break, please.', 'All done.'] } },
+  { id: 'functional-help', title: 'Help / Stop / Break', strand: 'functional', parentScript: ['Help, please.', 'Stop.', 'Break, please.', 'All done.'], materials: ['原创表达卡或手势'], prerequisiteIds: [], independentPractice: { title: 'Ask for what you need', prompt: 'What do you need?', choices: ['Help, please.', 'Stop.', 'Break, please.', 'All done.'] } },
   { id: 'functional-choice', title: 'I want / I do not want', strand: 'functional', parentScript: ['Which one?', 'I want this.', 'No, thank you.', 'All done.'], materials: ['两个熟悉实物'], prerequisiteIds: ['functional-help'] },
 ]
 

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
 import type { PrismaService } from '../database/prisma.service'
 import { LearningService } from './learning.service'
 
@@ -11,13 +12,28 @@ function mockPrisma() {
   }
 }
 
-describe('LearningService evidence slice', () => {
+describe('LearningService evidence and practice', () => {
   let prisma: ReturnType<typeof mockPrisma>
   let service: LearningService
+
   beforeEach(() => {
     prisma = mockPrisma()
     prisma.learnerProfile.findUnique.mockResolvedValue({ id: 'learner-1' })
     service = new LearningService(prisma as unknown as PrismaService)
+  })
+
+  it('returns only curriculum targets observed in completed accompanied sessions', async () => {
+    prisma.learningObservation.findMany.mockResolvedValue([
+      { targetId: 'functional-help' },
+      { targetId: 'not-in-curriculum' },
+    ])
+
+    await expect(service.getPractice('parent-1')).resolves.toEqual([
+      expect.objectContaining({ id: 'functional-help', prompt: 'What do you need?' }),
+    ])
+    expect(prisma.learningObservation.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { learnerId: 'learner-1', session: { status: 'COMPLETED' } },
+    }))
   })
 
   it('strictly rejects an observation outside its owned session or vocabulary', async () => {

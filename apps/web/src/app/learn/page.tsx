@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 
 import { getLearnerHome, getPracticeTargets, getSessionMode } from '@/lib/api'
 import { ReturnToParentForm } from './return-to-parent-form'
+import { PracticeActivity } from './practice-activity'
 
 export default async function LearnPage() {
   const mode = await getSessionMode()
@@ -17,7 +18,7 @@ export default async function LearnPage() {
         <p className="avatarDisplay" aria-hidden="true">{learner.avatarId === 'fox' ? '🦊' : learner.avatarId === 'panda' ? '🐼' : '🐬'}</p>
         <h1 id="learn-title">Hello, {learner.nickname}!</h1>
         <p className="summary">Ready to practice?</p>
-        {practice.length ? practice.map((target) => <button key={target.id} type="button">{target.title}</button>) : <p>Practice with a parent first.</p>}
+        <PracticeActivity targets={practice} />
         <ReturnToParentForm />
       </section>
     </main>

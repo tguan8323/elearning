@@ -10,12 +10,19 @@ export class LearningService {
     const learner = await this.prisma.learnerProfile.findUnique({ where: { parentId }, select: { id: true } })
     if (!learner) throw new NotFoundException('尚未建立孩子学习身份')
     const evidence = await this.prisma.learningObservation.findMany({
-      where: { learnerId: learner.id }, select: { targetId: true }, distinct: ['targetId'],
+      where: { learnerId: learner.id, session: { status: 'COMPLETED' } }, select: { targetId: true }, distinct: ['targetId'],
     })
     return evidence
       .map((item) => curriculumTargets.find((target) => target.id === item.targetId))
       .filter((item) => item !== undefined)
-      .map((item) => ({ id: item.id, title: item.title }))
+      .map((item) => ({
+        id: item.id,
+        ...(item.independentPractice ?? {
+          title: item.title,
+          prompt: 'Choose, or tell me what you need.',
+          choices: [item.grapheme ?? item.title, 'Help, please.', 'Break, please.', 'All done.'],
+        }),
+      }))
   }
 
   async getAdaptation(parentId: string) {
