@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { PrismaService } from '../database/prisma.service'

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return */
 import { ConflictException } from '@nestjs/common'
 import { describe, expect, it, vi } from 'vitest'
 
