@@ -1,5 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common'
-import { curriculumTargets } from './curriculum.data'
+import { curriculumTargets, curriculumVersion, phonicsGroupCount } from './curriculum.data'
 import { PrismaService } from '../database/prisma.service'
 
 @Injectable()
@@ -51,7 +51,16 @@ export class LearningService {
       .slice(0, 3)
       .map((item) => curriculumTargets.find((targetItem) => targetItem.id === item.targetId))
       .filter((item) => item !== undefined)
-    return { target, review, upcoming: curriculumTargets.filter((item) => !introduced.has(item.id)).slice(0, 5) }
+    return {
+      curriculumVersion,
+      phonicsGroupCount,
+      target,
+      reason: review.length > 0
+        ? '先保留少量回顾，再引入一个满足前置条件的新目标。'
+        : '这是当前满足前置条件的下一个新目标。',
+      review,
+      upcoming: curriculumTargets.filter((item) => !introduced.has(item.id)).slice(0, 5),
+    }
   }
 
   async startSession(parentId: string, clientId: string, targetId: string) {
