@@ -10,7 +10,7 @@ export class FamilyContentController {
 
   @Get('notice') notice() { return { copyrightResponsibility: '家长须确认拥有或获准使用上传内容；禁止上传商业教材内容。' } }
   @Get('assets') async list(@Req() req: Request) { const parent = await this.sessions.requireParent(req); return this.content.list(parent.id) }
-  @Post('assets') async create(@Req() req: Request, @Body(CreateAssetPipe) input: any) { const parent = await this.sessions.requireParent(req); return this.content.catalog(parent.id, input) }
+  @Post('assets') async create(@Req() req: Request, @Body(CreateAssetPipe) input: ReturnType<CreateAssetPipe['transform']>) { const parent = await this.sessions.requireParent(req); return this.content.catalog(parent.id, input) }
   @Post('versions/:versionId/bindings') async bind(@Req() req: Request, @Param('versionId') id: string, @Body(BindAssetPipe) input: { slotId: string }) { const parent = await this.sessions.requireParent(req); return this.content.bind(parent.id, id, input.slotId) }
   @Post('bindings/:bindingId/publish') async publish(@Req() req: Request, @Param('bindingId') id: string) { const parent = await this.sessions.requireParent(req); return this.content.publish(parent.id, id) }
   @Post('publications/:publicationId/withdraw') async withdraw(@Req() req: Request, @Param('publicationId') id: string) { const parent = await this.sessions.requireParent(req); return this.content.withdraw(parent.id, id) }

@@ -1,6 +1,6 @@
-import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common'
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import type { Prisma } from '@prisma/client'
-import { ConfigService } from '@nestjs/config'
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../database/prisma.service'
 import { COPYRIGHT_NOTICE } from './family-content.dto'
 
@@ -10,7 +10,7 @@ export const OBJECT_STORAGE = Symbol('OBJECT_STORAGE')
 @Injectable()
 export class MetadataOnlyStorage implements ObjectStorage {
   readonly enabled = false
-  async put() { throw new BadRequestException('对象存储未配置；内容仅保存元数据，未声称文件已上传') }
+  put(): Promise<void> { return Promise.reject(new BadRequestException('对象存储未配置；内容仅保存元数据，未声称文件已上传')) }
 }
 
 @Injectable()
@@ -77,4 +77,4 @@ export class FamilyContentService {
   private snapshot(asset: any, version: any, slot: any) { return { assetId: asset.id, versionId: version.id, title: asset.title, mediaType: asset.mediaType, source: asset.source, purpose: asset.purpose, targetLanguage: asset.targetLanguage, courseRefs: asset.courseRefs, stimulusFeatures: asset.stimulusFeatures, copyrightNotice: asset.copyrightNotice, mimeType: version.mimeType, fileName: version.fileName, fileSize: version.fileSize, storageKey: version.storageKey, slotId: slot.id, slotTitle: slot.title } }
 }
 
-export const storageProvider = { provide: OBJECT_STORAGE, inject: [ConfigService], useFactory: (_config: ConfigService) => new MetadataOnlyStorage() }
+export const storageProvider = { provide: OBJECT_STORAGE, useFactory: () => new MetadataOnlyStorage() }
