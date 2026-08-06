@@ -41,6 +41,14 @@ export class FamilyContentService {
     }, include: { versions: true } })
   }
 
+  async list(parentId: string) {
+    return this.prisma.familyAsset.findMany({
+      where: { parentId },
+      include: { versions: true },
+      orderBy: { createdAt: 'desc' },
+    })
+  }
+
   async preview(parentId: string, versionId: string) {
     const version = await this.ownedVersion(parentId, versionId)
     if (version.uploadState !== 'UPLOADED' || !version.storageKey || !this.storage.get) throw new NotFoundException('文件尚未上传')
@@ -60,7 +68,7 @@ export class FamilyContentService {
     if (mime === 'image/png') return body.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]))
     if (mime === 'image/jpeg') return body.subarray(0, 3).equals(Buffer.from([255,216,255]))
     if (mime === 'application/pdf') return body.subarray(0, 5).toString() === '%PDF-'
-    if (mime === 'audio/mpeg') return body.subarray(0, 3).toString() === 'ID3' || (body[0] === 0xff && (body[1] & 0xe0) === 0xe0)
+    if (mime === 'audio/mpeg') return body.length >= 3 && (body.subarray(0, 3).toString() === 'ID3' || (body[0] === 0xff && ((body[1] ?? 0) & 0xe0) === 0xe0))
     if (mime === 'audio/wav') return body.subarray(0, 4).toString() === 'RIFF' && body.subarray(8, 12).toString() === 'WAVE'
     if (mime === 'video/mp4') return body.subarray(4, 8).toString() === 'ftyp'
     return body.length > 0

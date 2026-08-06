@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { Body, Controller, Delete, Get, Headers, Inject, Param, Post, Req, Res } from '@nestjs/common'
 import type { Request, Response } from 'express'
 import { ParentSessionService } from '../auth/parent-session.service'
-import { BindAssetPipe, CreateAssetPipe } from './family-content.dto'
+import { CreateAssetPipe } from './family-content.dto'
 import { FamilyContentService } from './family-content.service'
 
 @Controller('family-content')
