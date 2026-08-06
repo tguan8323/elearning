@@ -39,6 +39,12 @@ export class LearningController {
     return this.learning.updateAdaptation(parent.id, allowed)
   }
 
+  @Get('evidence-summary')
+  async evidenceSummary(@Req() request: Request) {
+    const parent = await this.sessions.requireParent(request)
+    return this.learning.getEvidenceSummary(parent.id)
+  }
+
   @Get('plan')
   async plan(@Req() request: Request) {
     const parent = await this.sessions.requireParent(request)

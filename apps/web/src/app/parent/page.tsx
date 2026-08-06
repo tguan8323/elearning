@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 
-import { getCurrentLearner, getCurrentParent, getLearningPlan, getSessionMode } from '@/lib/api'
+import { getCurrentLearner, getCurrentParent, getEvidenceSummary, getLearningPlan, getSessionMode } from '@/lib/api'
 import { CreateLearnerForm } from './create-learner-form'
 import { LearnerManagement } from './learner-management'
 import { LogoutButton } from './logout-button'
@@ -13,7 +13,7 @@ export default async function ParentPage() {
   if (!session) redirect('/login')
 
   const learner = await getCurrentLearner()
-  const plan = learner ? await getLearningPlan() : null
+  const [plan, evidence] = learner ? await Promise.all([getLearningPlan(), getEvidenceSummary()]) : [null, null]
 
   return (
     <main className="shell">
@@ -27,6 +27,16 @@ export default async function ParentPage() {
             <p>昵称：{learner.nickname}</p>
             <p>头像：{learner.avatarId}</p>
             <LearnerManagement learner={learner} />
+            {evidence ? (
+              <section className="todayPlan" aria-labelledby="review-title">
+                <p className="eyebrow">学习证据回顾</p>
+                <h2 id="review-title">回顾建议</h2>
+                <p>{evidence.trendSummary}</p>
+                {evidence.reviewQueue.length > 0 ? (
+                  <ul>{evidence.reviewQueue.map((item) => <li key={item.id}><strong>{item.title}</strong>：{item.reason}</li>)}</ul>
+                ) : <p>当前没有需要优先安排的回顾项。</p>}
+              </section>
+            ) : null}
             {plan ? (
               <section className="todayPlan" aria-labelledby="today-title">
                 <p className="eyebrow">今日建议</p>

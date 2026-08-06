@@ -57,6 +57,22 @@ export async function getLearnerHome(): Promise<LearnerProfile | null> {
   }
 }
 
+export type EvidenceSummary = {
+  stableTargetIds: string[]
+  reviewQueue: Array<{ id: string; title: string; reason: string }>
+  trendSummary: string
+}
+
+export async function getEvidenceSummary(): Promise<EvidenceSummary | null> {
+  try {
+    const cookieHeader = (await cookies()).toString()
+    const response = await fetch(`${API_URL}/learning/evidence-summary`, {
+      cache: 'no-store', headers: cookieHeader ? { cookie: cookieHeader } : {},
+    })
+    return response.ok ? await response.json() as EvidenceSummary : null
+  } catch { return null }
+}
+
 export async function getLearningPlan(): Promise<{
   target: { id: string; title: string; parentScript: string[]; materials: string[] }
   review: Array<{ id: string; title: string }>
