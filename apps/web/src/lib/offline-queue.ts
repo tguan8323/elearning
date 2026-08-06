@@ -91,7 +91,7 @@ export async function replayQueue(fetcher: typeof fetch = fetch) {
     const response = await fetcher('/api/sync/operations', {
       method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify(operation),
     })
-    if (response.status === 409) break
+    if (response.status === 409) { const detail = await response.json().catch(() => ({})); db.close(); throw new Error(`同步冲突：${JSON.stringify(detail)}`) }
     if (!response.ok) throw new Error(`同步失败：${response.status}`)
     const tx = db.transaction('operations', 'readwrite')
     tx.objectStore('operations').delete(operation.operationId)

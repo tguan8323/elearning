@@ -1,4 +1,5 @@
 const CACHE = 'family-english-shell-v1'
+const PACKAGE_CACHE = 'family-english-package-v1'
 const SHELL = ['/', '/learn', '/manifest.webmanifest', '/icon.svg']
 
 self.addEventListener('install', (event) => {
@@ -8,6 +9,12 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)))))
   self.clients.claim()
+})
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'ACTIVATE_PACKAGE' && Array.isArray(event.data.urls)) {
+    event.waitUntil(caches.open(PACKAGE_CACHE).then((cache) => cache.addAll(event.data.urls)))
+  }
+  if (event.data?.type === 'CLEAR_PACKAGE') event.waitUntil(caches.delete(PACKAGE_CACHE))
 })
 self.addEventListener('fetch', (event) => {
   const request = event.request
