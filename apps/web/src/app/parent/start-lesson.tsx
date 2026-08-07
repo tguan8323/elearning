@@ -8,6 +8,11 @@ export function StartLesson({ target }: { target: { id: string; title: string; p
   const [step, setStep] = useState<number | null>(null)
   const [sessionId, setSessionId] = useState('')
   const [statusMessage, setStatusMessage] = useState('')
+  const [interestLevel, setInterestLevel] = useState('not_observed')
+  const [fatigueLevel, setFatigueLevel] = useState('not_observed')
+  const [discomfort, setDiscomfort] = useState(false)
+  const [effectivePrompt, setEffectivePrompt] = useState('')
+  const [note, setNote] = useState('')
   const stages = ['预告与准备', '回顾上一课', '引入一个新目标', '多方式练习', '明确结束']
   const currentContent = step === null ? '' : target.parentScript[Math.min(step, target.parentScript.length - 1)]
 
@@ -40,7 +45,7 @@ export function StartLesson({ target }: { target: { id: string; title: string; p
   }
 
   async function observe(outcome: 'independent' | 'prompted' | 'not_observed' | 'declined') {
-    const observation = { clientId: crypto.randomUUID(), sessionId, targetId: target.id, outcome, promptLevel: outcome === 'independent' ? 'none' : outcome === 'prompted' ? 'gesture' : 'not_applicable', materialVariant: `lesson-stage-${step ?? 4}` }
+    const observation = { clientId: crypto.randomUUID(), sessionId, targetId: target.id, outcome, promptLevel: outcome === 'independent' ? 'none' : outcome === 'prompted' ? 'gesture' : 'not_applicable', effectivePrompt: effectivePrompt.trim() || undefined, materialVariant: `lesson-stage-${step ?? 4}`, interestLevel, fatigueLevel, discomfort, note: note.trim() || undefined }
     try {
       const response = await fetch('/api/learning/observations', { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify(observation) })
       if (!response.ok) throw new Error('offline')
@@ -76,6 +81,11 @@ export function StartLesson({ target }: { target: { id: string; title: string; p
         </a>
         {step < 4 ? <button onClick={advance}>下一步</button> : (
           <div className="observationChoices">
+            <label>兴趣<select value={interestLevel} onChange={(event) => setInterestLevel(event.target.value)}><option value="not_observed">未观察</option><option value="high">高</option><option value="medium">中</option><option value="low">低</option></select></label>
+            <label>疲劳<select value={fatigueLevel} onChange={(event) => setFatigueLevel(event.target.value)}><option value="not_observed">未观察</option><option value="none">无</option><option value="mild">轻微</option><option value="high">明显</option></select></label>
+            <label><input type="checkbox" checked={discomfort} onChange={(event) => setDiscomfort(event.target.checked)} /> 感觉不适</label>
+            <label>实际提示<input value={effectivePrompt} onChange={(event) => setEffectivePrompt(event.target.value)} maxLength={120} placeholder="可选" /></label>
+            <label>课后备注<textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} placeholder="可选" /></label>
             <button onClick={() => void observe('independent')}>独立完成</button>
             <button onClick={() => void observe('prompted')}>提示后完成</button>
             <button onClick={() => void observe('not_observed')}>未观察到</button>

@@ -5,8 +5,31 @@ import { join } from 'node:path'
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../database/prisma.service'
 import { COPYRIGHT_NOTICE } from './family-content.dto'
+const MAX_AUDIO_DURATION_MS = Number(process.env.MAX_AUDIO_DURATION_MS ?? 15 * 60 * 1000)
+const MAX_VIDEO_DURATION_MS = Number(process.env.MAX_VIDEO_DURATION_MS ?? 10 * 60 * 1000)
 
-export interface ObjectStorage { enabled: boolean; put(key: string, body: Buffer, mimeType: string): Promise<void>; get?(key: string): Promise<Buffer>; delete?(key: string): Promise<void> }
+function parseDurationMs(mimeType: string, body: Buffer): number | null {
+  if (mimeType === 'audio/wav' && body.length >= 44) {
+    const byteRate = body.readUInt32LE(28)
+    return byteRate > 0 ? Math.floor(((body.length - 44) / byteRate) * 1000) : null
+  }
+  if (mimeType === 'audio/mpeg' && body.length >= 3) {
+    const bitrateKbps = ((body[2] ?? 0) >> 4) || 0
+    return bitrateKbps > 0 ? Math.floor((body.length * 8) / (bitrateKbps * 1000) * 1000) : null
+  }
+  if (mimeType === 'video/mp4') {
+    for (let offset = 0; offset + 16 <= body.length; offset += 1) {
+      if (body.subarray(offset + 4, offset + 8).toString() !== 'mvhd') continue
+      const version = body[offset + 8]
+      const timescale = version === 1 ? body.readUInt32BE(offset + 28) : body.readUInt32BE(offset + 20)
+      const duration = version === 1 ? Number(body.readBigUInt64BE(offset + 32)) : body.readUInt32BE(offset + 24)
+      return timescale > 0 ? Math.floor(duration / timescale * 1000) : null
+    }
+  }
+  return null
+}
+
+export interface ObjectStorage { enabled: boolean; put(key: string, body: Buffer, mimeType: string): Promise<void>; get?(key: string): Promise<Buffer>; delete?(key: string): Promise<void>; listKeys?(prefix?: string): Promise<string[]> }
 export const OBJECT_STORAGE = Symbol('OBJECT_STORAGE')
 
 @Injectable()
@@ -20,6 +43,19 @@ export class LocalObjectStorage implements ObjectStorage {
   }
   async get(key: string) { return fs.readFile(join(this.root, key)) }
   async delete(key: string) { await fs.rm(join(this.root, key), { force: true }) }
+  async listKeys(prefix = ''): Promise<string[]> {
+    const root = join(this.root, prefix)
+    if (!existsSync(root)) return []
+    const entries = await fs.readdir(root, { withFileTypes: true })
+    const keys: string[] = []
+    for (const entry of entries) {
+      const relative = join(prefix, entry.name).replaceAll('\\\\', '/')
+      if (entry.isDirectory()) keys.push(...await this.listKeys(relative))
+      else keys.push(relative)
+    }
+    return keys
+  }
+
   has(key: string) { return existsSync(join(this.root, key)) }
 }
 
@@ -81,14 +117,18 @@ export class FamilyContentService {
     const version = await this.ownedVersion(parentId, versionId)
     if (body.length !== version.fileSize) throw new BadRequestException('实际文件大小与声明不一致')
     if (!this.matchesMagic(version.mimeType, body)) throw new BadRequestException('文件魔数与声明的 MIME 类型不一致')
+    const durationMs = parseDurationMs(version.mimeType, body)
+    if (version.mimeType.startsWith('audio/') && (durationMs === null || durationMs > MAX_AUDIO_DURATION_MS)) throw new BadRequestException('音频时长无法解析或超过上限')
+    if (version.mimeType.startsWith('video/') && (durationMs === null || durationMs > MAX_VIDEO_DURATION_MS)) throw new BadRequestException('视频时长无法解析或超过上限')
     const storageKey = `${parentId}/${version.assetId}/${version.id}`
+    await this.prisma.assetVersion.update({ where: { id: version.id }, data: { uploadState: 'UPLOADING', uploadError: null } })
     try {
       await this.storage.put(storageKey, body, version.mimeType)
     } catch (error) {
-      await this.prisma.assetVersion.update({ where: { id: version.id }, data: { uploadState: 'METADATA_ONLY' } })
+      await this.prisma.assetVersion.update({ where: { id: version.id }, data: { uploadState: 'UPLOAD_FAILED', uploadError: error instanceof Error ? error.message.slice(0, 500) : '上传失败' } })
       throw error
     }
-    return this.prisma.assetVersion.update({ where: { id: version.id }, data: { storageKey, uploadState: 'UPLOADED', fileSize: body.length } })
+    return this.prisma.assetVersion.update({ where: { id: version.id }, data: { storageKey, uploadState: 'UPLOADED', fileSize: body.length, durationMs } })
   }
 
   private matchesMagic(mime: string, body: Buffer) {
@@ -110,11 +150,21 @@ export class FamilyContentService {
     return this.prisma.assetBinding.create({ data: { versionId, slotId, previewSnapshot } })
   }
 
+  async confirmPreview(parentId: string, bindingId: string) {
+    const binding = await this.prisma.assetBinding.findUnique({ where: { id: bindingId }, include: { version: { include: { asset: true } }, slot: true } })
+    if (!binding) throw new NotFoundException('绑定不存在')
+    if (binding.version.asset.parentId !== parentId) throw new ForbiddenException('不能访问其他家庭的内容')
+    const current = this.snapshot(binding.version.asset, binding.version, binding.slot)
+    if (JSON.stringify(current) !== JSON.stringify(binding.previewSnapshot)) throw new ConflictException('预览快照已变化，请重新预览')
+    return this.prisma.assetBinding.update({ where: { id: bindingId }, data: { previewConfirmedAt: new Date() } })
+  }
+
   async publish(parentId: string, bindingId: string) {
     const binding = await this.prisma.assetBinding.findUnique({ where: { id: bindingId }, include: { version: { include: { asset: true, audioReview: true } }, slot: true } })
     if (!binding) throw new NotFoundException('绑定不存在')
     if (binding.version.asset.parentId !== parentId) throw new ForbiddenException('不能访问其他家庭的内容')
     if (!binding.slot.learnerEligible) throw new BadRequestException('此插槽不允许发布到孩子页面')
+    if (!binding.previewConfirmedAt) throw new BadRequestException('发布前必须确认孩子页面预览')
     if (binding.version.uploadState !== 'UPLOADED') throw new BadRequestException('文件尚未真实上传，不能发布')
     if (binding.version.mimeType.startsWith('audio/') && binding.version.audioReview?.reviewState !== 'APPROVED') throw new BadRequestException('音频必须先通过家长审核才能发布')
     return this.prisma.publication.create({ data: { parentId, bindingId, versionId: binding.versionId, snapshot: binding.previewSnapshot as Prisma.InputJsonValue } })
@@ -142,7 +192,16 @@ export class FamilyContentService {
 
   async cleanupOrphanObjects(parentId: string) {
     const versions = await this.prisma.assetVersion.findMany({ where: { asset: { parentId }, storageKey: { not: null } }, select: { storageKey: true } })
-    return { retained: versions.length, provider: this.storage.constructor.name }
+    const referenced = new Set(versions.flatMap((version) => version.storageKey ? [version.storageKey] : []))
+    if (!this.storage.listKeys || !this.storage.delete) return { retained: referenced.size, deleted: 0, failed: 0, provider: this.storage.constructor.name }
+    const keys = await this.storage.listKeys(parentId)
+    let deleted = 0
+    let failed = 0
+    for (const key of keys) {
+      if (referenced.has(key)) continue
+      try { await this.storage.delete(key); deleted += 1 } catch { failed += 1 }
+    }
+    return { retained: referenced.size, deleted, failed, provider: this.storage.constructor.name }
   }
   async remove(parentId: string, assetId: string) {
     const asset = await this.prisma.familyAsset.findUnique({ where: { id: assetId }, include: { versions: { include: { bindings: { include: { publications: true } } } } } })

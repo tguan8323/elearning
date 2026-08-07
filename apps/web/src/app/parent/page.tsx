@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation'
 
-import { getCurrentLearner, getCurrentParent, getEvidenceSummary, getFamilyAdaptation, getFamilyContentCatalog, getLearningPlan, getMaterialsCatalog, getSessionMode } from '@/lib/api'
+import { getCurrentLearner, getCurrentParent, getEvidenceSummary, getFamilyAdaptation, getFamilyContentCatalog, getLearningPlan, getMaterialsCatalog, getSessionMode, getCourseMap } from '@/lib/api'
 import { FamilyAdaptationForm } from './family-adaptation-form'
+import { CourseMap } from './course-map'
 import { CreateLearnerForm } from './create-learner-form'
 import { DataGovernanceCenter } from './data-governance-center'
 import { FamilyContentManager } from './family-content-manager'
@@ -19,12 +20,13 @@ export default async function ParentPage() {
   if (!session) redirect('/login')
 
   const learner = await getCurrentLearner()
-  const [plan, evidence, familyContent, adaptation, materialsCatalog] = await Promise.all([
+  const [plan, evidence, familyContent, adaptation, materialsCatalog, courseMap] = await Promise.all([
     learner ? getLearningPlan() : Promise.resolve(null),
     learner ? getEvidenceSummary() : Promise.resolve(null),
     getFamilyContentCatalog(),
     getFamilyAdaptation(),
     getMaterialsCatalog(),
+    getCourseMap(),
   ])
 
   return (
@@ -77,6 +79,7 @@ export default async function ParentPage() {
         {learner ? <OfflinePackage /> : null}
         {learner ? <SyncStatus /> : null}
         {learner ? <TeachingRecords /> : null}
+        {courseMap ? <CourseMap {...courseMap} /> : null}
         <FamilyContentManager items={familyContent} />
         <LogoutButton />
       </section>

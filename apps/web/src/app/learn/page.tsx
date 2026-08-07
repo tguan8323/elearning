@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { getLearnerHome, getPracticeTargets, getPublishedFamilyContent, getSessionMode } from '@/lib/api'
 import { PublishedFamilyContent } from './published-family-content'
 import { ReturnToParentForm } from './return-to-parent-form'
+import { InstantRecording } from './instant-recording'
 import { PracticeActivity } from './practice-activity'
 
 export default async function LearnPage() {
@@ -20,6 +21,7 @@ export default async function LearnPage() {
         <h1 id="learn-title">Hello, {learner.nickname}!</h1>
         <p className="summary">Ready to practice?</p>
         <PracticeActivity targets={practice} />
+        <InstantRecording />
         <PublishedFamilyContent items={familyContent} />
         <ReturnToParentForm />
       </section>

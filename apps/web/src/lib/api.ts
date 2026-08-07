@@ -81,6 +81,8 @@ async function getLearningResource<T>(path: string): Promise<T | null> {
 export function getFamilyAdaptation() { return getLearningResource<FamilyAdaptation>('adaptation') }
 export async function getMaterialsCatalog() { return (await getLearningResource<MaterialsCatalogItem[]>('materials-catalog')) ?? [] }
 
+export async function getCourseMap() { return (await getLearningResource<{ version: string; targets: Array<{ id: string; title: string; strand: string; parentScript: string[]; materials: string[]; prerequisiteIds: string[]; independentPractice?: unknown }> }>('course-map')) ?? null }
+
 export type EvidenceSummary = {
   stableTargetIds: string[]
   reviewQueue: Array<{ id: string; title: string; reason: string }>

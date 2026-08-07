@@ -155,7 +155,11 @@ model LearningObservation {
   targetId        String
   outcome         String
   promptLevel     String?
+  effectivePrompt String?
   materialVariant String?
+  interestLevel   String?
+  fatigueLevel    String?
+  discomfort      Boolean         @default(false)
   note            String?
   observedAt      DateTime        @default(now())
 
@@ -164,6 +168,8 @@ model LearningObservation {
 
 enum AssetUploadState {
   METADATA_ONLY
+  UPLOADING
+  UPLOAD_FAILED
   UPLOADED
 }
 
@@ -209,7 +215,9 @@ model AssetVersion {
   mimeType     String
   fileName     String
   fileSize     Int
+  durationMs   Int?
   uploadState  AssetUploadState @default(METADATA_ONLY)
+  uploadError  String?
   storageKey   String?
   bindings     AssetBinding[]
   publications Publication[]
@@ -237,6 +245,7 @@ model AssetBinding {
   slot            ContentSlot   @relation(fields: [slotId], references: [id], onDelete: Restrict)
   slotId          String
   previewSnapshot Json
+  previewConfirmedAt DateTime?
   publications    Publication[]
   createdAt       DateTime      @default(now())
 

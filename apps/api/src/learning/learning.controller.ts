@@ -48,6 +48,12 @@ export class LearningController {
     return this.learning.getEvidenceSummary(parent.id)
   }
 
+  @Get('course-map')
+  async courseMap(@Req() request: Request) {
+    await this.sessions.requireParent(request)
+    return this.learning.getCourseMap()
+  }
+
   @Get('plan')
   async plan(@Req() request: Request) {
     const parent = await this.sessions.requireParent(request)

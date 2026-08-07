@@ -35,10 +35,10 @@ describe('FamilyContentService', () => {
   })
 
   it('never publishes metadata-only content and publishes the frozen preview only after upload', async () => {
-    const binding = { id: 'binding-1', versionId: version.id, previewSnapshot: { title: 'frozen' }, version, slot }
+    const binding: any = { id: 'binding-1', versionId: version.id, previewSnapshot: { title: 'frozen' }, version, slot }
     prisma.assetBinding.findUnique.mockResolvedValue(binding)
     await expect(service.publish('parent-1', binding.id)).rejects.toBeInstanceOf(BadRequestException)
-    binding.version = { ...version, uploadState: 'UPLOADED' }; prisma.publication.create.mockResolvedValue({ id: 'pub-1' })
+    binding.version = { ...version, uploadState: 'UPLOADED' }; binding.previewConfirmedAt = new Date(); prisma.publication.create.mockResolvedValue({ id: 'pub-1' })
     await service.publish('parent-1', binding.id)
     expect(prisma.publication.create).toHaveBeenCalledWith({ data: expect.objectContaining({ snapshot: { title: 'frozen' }, versionId: version.id }) })
   })

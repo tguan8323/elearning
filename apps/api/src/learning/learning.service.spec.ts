@@ -73,6 +73,17 @@ describe('LearningService evidence and practice', () => {
     expect(prisma.learningObservation.update).toHaveBeenCalledWith({ where: { id: 'observation-1' }, data: { note: 'note' } })
   })
 
+  it('rejects a second concurrent in-progress session for the learner', async () => {
+    prisma.teachingSession.findFirst.mockResolvedValue({ id: 'active-1', clientId: 'other-client', targetTitle: 'Existing target' })
+    await expect(service.startSession('parent-1', 'new-client', 'functional-help')).rejects.toMatchObject({ status: 409 })
+    expect(prisma.teachingSession.upsert).not.toHaveBeenCalled()
+  })
+
+  it('rejects unsupported session finish statuses', async () => {
+    await expect(service.finishSession('parent-1', 'session-1', 'UNKNOWN')).rejects.toMatchObject({ status: 400 })
+    expect(prisma.teachingSession.update).not.toHaveBeenCalled()
+  })
+
   it('strictly rejects an observation outside its owned session or vocabulary', async () => {
     prisma.teachingSession.findFirst.mockResolvedValue(null)
     await expect(service.observe('parent-1', {

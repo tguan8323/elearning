@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client'
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common'
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { curriculumTargets, curriculumVersion, phonicsGroupCount } from './curriculum.data'
 import { PrismaService } from '../database/prisma.service'
 import { DEFAULT_ADAPTATION, type UpdateFamilyAdaptationDto } from './adaptation.dto'
@@ -78,6 +78,10 @@ export class LearningService {
     return MATERIALS_CATALOG
   }
 
+  getCourseMap() {
+    return { version: curriculumVersion, targets: curriculumTargets }
+  }
+
   async getPlan(parentId: string) {
     const learner = await this.prisma.learnerProfile.findUnique({ where: { parentId }, select: { id: true } })
     if (!learner) throw new NotFoundException('尚未建立孩子学习身份')
@@ -89,13 +93,14 @@ export class LearningService {
     const systemTarget = curriculumTargets.find((item) =>
       !introduced.has(item.id) && item.prerequisiteIds.every((id) => introduced.has(id)),
     ) ?? curriculumTargets[0]
+    const reviewBacklog = observations.filter((item) => item.outcome !== 'independent').length
     const review = observations
       .filter((item) => item.outcome !== 'independent')
       .slice(0, 3)
       .map((item) => curriculumTargets.find((targetItem) => targetItem.id === item.targetId))
       .filter((item) => item !== undefined)
     const override = adaptation.planOverride as { mode?: string; reason?: string; specifiedOrt?: string } | null
-    const target = override?.mode === 'skip' || override?.mode === 'review_only' ? null
+    const target = override?.mode === 'skip' || override?.mode === 'review_only' || (!override && reviewBacklog >= 5) ? null
       : override?.mode === 'specified_ort' ? { ...systemTarget, title: override.specifiedOrt?.trim() || '指定 ORT 阅读' }
       : systemTarget
     return {
@@ -126,13 +131,15 @@ export class LearningService {
     const learner = await this.prisma.learnerProfile.findUnique({ where: { parentId }, select: { id: true } })
     const target = curriculumTargets.find((item) => item.id === targetId)
     if (!learner || !target) throw new NotFoundException('教学目标不存在')
+    const active = await this.prisma.teachingSession.findFirst({ where: { learnerId: learner.id, status: 'IN_PROGRESS', NOT: { clientId } }, select: { id: true, clientId: true, targetTitle: true } })
+    if (active) throw new ConflictException({ code: 'ACTIVE_SESSION_EXISTS', session: active })
     return this.prisma.teachingSession.upsert({
       where: { clientId }, update: {},
       create: { clientId, learnerId: learner.id, targetId, targetTitle: target.title, status: 'IN_PROGRESS', startedAt: new Date() },
     })
   }
 
-  async observe(parentId: string, input: { clientId: string; sessionId: string; targetId: string; outcome: string; promptLevel?: string; materialVariant?: string; note?: string }) {
+  async observe(parentId: string, input: { clientId: string; sessionId: string; targetId: string; outcome: string; promptLevel?: string; effectivePrompt?: string; materialVariant?: string; interestLevel?: string; fatigueLevel?: string; discomfort?: boolean; note?: string }) {
     const learner = await this.prisma.learnerProfile.findUnique({ where: { parentId }, select: { id: true } })
     if (!learner) throw new NotFoundException('尚未建立孩子学习身份')
     const outcomes = ['independent', 'prompted', 'not_observed', 'declined']
@@ -152,13 +159,19 @@ export class LearningService {
     if (input.outcome !== 'independent' && !['not_applicable'].includes(input.promptLevel) && input.promptLevel === 'none') {
       throw new BadRequestException('非独立表现需要记录提示层级')
     }
+    const interestLevels = ['high', 'medium', 'low', 'not_observed']
+    const fatigueLevels = ['none', 'mild', 'high', 'not_observed']
     const variant = input.materialVariant?.trim()
-    if (!variant || variant.length > 80 || (input.note?.length ?? 0) > 500 || input.clientId.trim().length === 0) {
-      throw new BadRequestException('请记录材料或活动变化，并检查备注长度')
+    const effectivePrompt = input.effectivePrompt?.trim()
+    if (!variant || variant.length > 80 || (effectivePrompt?.length ?? 0) > 120 || (input.note?.length ?? 0) > 500 || input.clientId.trim().length === 0) {
+      throw new BadRequestException('请记录材料或活动变化，并检查提示与备注长度')
+    }
+    if ((input.interestLevel && !interestLevels.includes(input.interestLevel)) || (input.fatigueLevel && !fatigueLevels.includes(input.fatigueLevel)) || (input.discomfort !== undefined && typeof input.discomfort !== 'boolean')) {
+      throw new BadRequestException('请选择有效的兴趣、疲劳和感觉不适记录')
     }
     return this.prisma.learningObservation.upsert({
       where: { clientId: input.clientId.trim() }, update: {},
-      create: { ...input, clientId: input.clientId.trim(), materialVariant: variant, learnerId: learner.id },
+      create: { ...input, effectivePrompt: effectivePrompt || null, clientId: input.clientId.trim(), materialVariant: variant, learnerId: learner.id },
     })
   }
 
@@ -205,6 +218,7 @@ export class LearningService {
   }
 
   async finishSession(parentId: string, sessionId: string, status: string) {
+    if (!['COMPLETED', 'ENDED_EARLY'].includes(status)) throw new BadRequestException('教学结束状态无效')
     const learner = await this.prisma.learnerProfile.findUnique({ where: { parentId }, select: { id: true } })
     if (!learner) throw new NotFoundException('尚未建立孩子学习身份')
     return this.prisma.teachingSession.update({
