@@ -9,6 +9,7 @@ function prismaMock() {
     syncOperation: { findUnique: vi.fn(), create: vi.fn() },
     syncChange: { findFirst: vi.fn(), create: vi.fn(), findMany: vi.fn() },
     learnerProfile: { findUnique: vi.fn() },
+    publication: { findMany: vi.fn() },
     teachingSession: { upsert: vi.fn(), deleteMany: vi.fn() },
     learningObservation: { upsert: vi.fn() },
   }
@@ -22,6 +23,17 @@ describe('SyncService', () => {
     expect(service.packageChecksum({ lessons: ['s'] })).toBe('57ef021b97e548b332fb0bd342775269b02b5e31625be6544b8bb443ec99eb4b')
   })
 
+  it('includes a complete offline lesson shell and only active publications', async () => {
+    const { prisma } = prismaMock()
+    prisma.learnerProfile.findUnique.mockResolvedValue({ id: 'learner-1' })
+    prisma.publication.findMany.mockResolvedValue([{ id: 'pub-1', versionId: 'v1', snapshot: { title: 'private' } }])
+    const service = new SyncService(prisma as never)
+    const manifest = await service.packageManifest('parent-1')
+    expect(manifest.payload.lessonStages).toEqual(['prepare', 'review', 'introduce', 'practice', 'finish'])
+    expect(manifest.payload.targets.length).toBeGreaterThan(10)
+    expect(manifest.payload.resources).toContain('/learn')
+    expect(manifest.payload.publications).toHaveLength(1)
+  })
   it('returns ledger result without applying an operation twice', async () => {
     const { tx, prisma } = prismaMock()
     tx.syncOperation.findUnique.mockResolvedValue({ result: { recordId: 'r1', version: 1, cursor: '4' } })

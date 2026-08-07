@@ -1,6 +1,11 @@
-const CACHE = 'family-english-shell-v1'
-const PACKAGE_CACHE_PREFIX = 'family-english-package-'
-const PACKAGE_META_CACHE = 'family-english-package-meta-v1'
+const SW_CONFIG = {
+  cache: 'family-english-shell-v1',
+  packagePrefix: 'family-english-package-',
+  packageMeta: 'family-english-package-meta-v1',
+}
+const CACHE = SW_CONFIG.cache
+const PACKAGE_CACHE_PREFIX = SW_CONFIG.packagePrefix
+const PACKAGE_META_CACHE = SW_CONFIG.packageMeta
 const PACKAGE_ACTIVE_KEY = '/__family-english-active-package__'
 const SHELL = ['/', '/learn', '/manifest.webmanifest', '/icon.svg']
 

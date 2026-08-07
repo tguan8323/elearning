@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-项目已经进入**首个产品闭环阶段**：需求与课程架构文档保持为实现依据，单仓库中已建立 Next.js 前端、NestJS 后端、共享 TypeScript 包、Prisma 数据层和本地基础设施，并提供预建家长账号的安全初始化与登录入口。正式教学功能仍在后续工单中实现。第一版只服务当前家庭中的一个孩子，不按公共教学平台设计。
+项目已经进入**首个产品闭环阶段**：需求与课程架构文档保持为实现依据，单仓库中已建立 Next.js 前端、NestJS 后端、共享 TypeScript 包、Prisma 数据层和本地基础设施，并提供预建家长账号的安全初始化与登录入口。核心身份、课程、家庭内容和离线包闭环已实现并通过自动化验收；发布前仍需完成真实家庭凭据验收、完整浏览器离线同步证据和基础音频资产版权确认。第一版只服务当前家庭中的一个孩子，不按公共教学平台设计。
 
 ## 核心原则
 
@@ -60,10 +60,50 @@ corepack pnpm exec playwright install webkit
 corepack pnpm test:e2e
 ```
 
+一次性 synthetic 验收（仅使用本机数据库，自动迁移、seed 并启动服务）：
+
+```powershell
+$env:SYNTHETIC_PARENT_EMAIL = 'synthetic@example.test'
+$env:SYNTHETIC_PARENT_PASSWORD = 'synthetic-local-password-123'
+corepack pnpm test:synthetic
+```
+
+真实家庭验收不会把凭据写入命令参数或文件。先确保本机服务和数据库正在运行，再通过环境变量临时注入凭据；缺失或非本机数据库时命令会安全拒绝：
+
+```powershell
+$env:REAL_PARENT_EMAIL = '<your-family-email>'
+$env:REAL_PARENT_PASSWORD = '<your-family-password>'
+corepack pnpm test:real
+Remove-Item Env:REAL_PARENT_EMAIL, Env:REAL_PARENT_PASSWORD
+```
+
+首次使用没有家长账号时，运行 `corepack pnpm --filter @family-english/api parent:init`，在交互式终端中输入邮箱和密码。密码不会回显，也不会写入参数、源码、`.env`、日志或测试产物。账号创建后访问 `http://localhost:3000/login`。
+
 `.env`、本地数据库卷、上传内容和备份不得提交。Docker 本地卷不是正式备份。
+
+## 本地 phonics / 商业教材目录
+
+如果你拥有商业 phonics 或阅读教材的使用权，可以先在本机生成私有候选目录：
+
+```powershell
+corepack pnpm catalog:private
+```
+
+默认扫描 `D:\BaiduNetdiskDownload\English Learning`，也可以直接调用脚本指定其他本地目录：
+
+```powershell
+node scripts/generate-private-catalog.mjs "D:\path\to\English Learning"
+```
+
+目录会生成到 `private-content/phonics/catalog.json`。它只保存文件名、相对路径、大小、类型、Level、候选 phonics target 和建议插槽，不复制 PDF、图片、音频或压缩包。`private-content/` 已加入 Git 忽略规则，不会被提交或推送。
+
+目录只是候选清单，不会自动上传、绑定、发布或显示给孩子。家长仍需在家长区选择本地文件，完成格式/大小/时长检查、孩子页面预览、插槽绑定和明确发布。无法从文件名可靠识别的项目会标记为 `needs-review`，需要家长手动确认。商业教材不会被抓取、公开搜索、发送给 AI 或放入公共课程资源。
+
+当前私有目录说明见 `private-content/phonics/README.md`（该目录为本机私有目录，不纳入 Git）。
 
 ## 文档
 
+- [零背景用户人工走查记录](docs/ACCEPTANCE_ZERO_BACKGROUND.md)
 - [领域词汇表](CONTEXT.md)
 - [产品需求](docs/PRODUCT_REQUIREMENTS.md)
 - [课程架构](docs/CURRICULUM_ARCHITECTURE.md)

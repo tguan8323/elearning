@@ -74,7 +74,14 @@ export class FamilyContentService {
     if (slots.length) return slots
     return [
       { id: 'learner-visual', title: '孩子页面图片', purpose: '低刺激视觉提示', acceptedMimeTypes: ['image/png', 'image/jpeg'], maxFileSize: 5 * 1024 * 1024, learnerEligible: true },
-      { id: 'learner-audio', title: '孩子页面音频', purpose: '家长审核的英语音频', acceptedMimeTypes: ['audio/mpeg', 'audio/wav'], maxFileSize: 25 * 1024 * 1024, learnerEligible: true },
+      { id: 'learner-audio', title: '审核英语音频', purpose: '家长审核后的美式英语示范与朗读', acceptedMimeTypes: ['audio/mpeg', 'audio/wav'], maxFileSize: 25 * 1024 * 1024, learnerEligible: true },
+      { id: 'learner-video', title: '孩子页面视频', purpose: '低刺激家庭教学视频', acceptedMimeTypes: ['video/mp4'], maxFileSize: 25 * 1024 * 1024, learnerEligible: true },
+      { id: 'flash-card-activity', title: 'Flash Cards / 活动说明', purpose: '家庭自有闪卡导航和原创活动说明', acceptedMimeTypes: ['image/png', 'image/jpeg', 'application/pdf', 'text/plain'], maxFileSize: 10 * 1024 * 1024, learnerEligible: true },
+      { id: 'wordless-reading', title: '无字书 / 朗读', purpose: '家庭自有无字书导航或家长原创朗读材料', acceptedMimeTypes: ['image/png', 'image/jpeg', 'audio/mpeg', 'audio/wav', 'application/pdf'], maxFileSize: 25 * 1024 * 1024, learnerEligible: true },
+      { id: 'decodable-reading', title: '可解码阅读', purpose: '符合当前可解码范围的家庭原创或获授权材料', acceptedMimeTypes: ['application/pdf', 'text/plain', 'image/png', 'image/jpeg'], maxFileSize: 25 * 1024 * 1024, learnerEligible: true },
+      { id: 'ort-navigation', title: 'ORT 实体书导航', purpose: '只记录家庭实体书标题、级别和取用位置', acceptedMimeTypes: ['text/plain'], maxFileSize: 1024 * 1024, learnerEligible: true },
+      { id: 'lesson-review', title: '课前回顾', purpose: '已接触目标的低刺激回顾材料', acceptedMimeTypes: ['image/png', 'image/jpeg', 'audio/mpeg', 'audio/wav', 'text/plain'], maxFileSize: 25 * 1024 * 1024, learnerEligible: true },
+      { id: 'independent-practice', title: '独立巩固', purpose: '仅用于已陪伴接触目标的独立巩固', acceptedMimeTypes: ['image/png', 'image/jpeg', 'audio/mpeg', 'audio/wav', 'text/plain'], maxFileSize: 25 * 1024 * 1024, learnerEligible: true },
       { id: 'parent-reference', title: '家长参考', purpose: '只供家长准备和参考', acceptedMimeTypes: ['image/png', 'image/jpeg', 'application/pdf', 'text/plain'], maxFileSize: 25 * 1024 * 1024, learnerEligible: false },
     ]
   }
@@ -155,7 +162,10 @@ export class FamilyContentService {
     if (!binding) throw new NotFoundException('绑定不存在')
     if (binding.version.asset.parentId !== parentId) throw new ForbiddenException('不能访问其他家庭的内容')
     const current = this.snapshot(binding.version.asset, binding.version, binding.slot)
-    if (JSON.stringify(current) !== JSON.stringify(binding.previewSnapshot)) throw new ConflictException('预览快照已变化，请重新预览')
+    const normalize = (value: any): any => value && typeof value === 'object' && !Array.isArray(value)
+      ? Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => [key, normalize(item)]))
+      : Array.isArray(value) ? value.map(normalize) : value
+    if (JSON.stringify(normalize(current)) !== JSON.stringify(normalize(binding.previewSnapshot))) throw new ConflictException('预览快照已变化，请重新预览')
     return this.prisma.assetBinding.update({ where: { id: bindingId }, data: { previewConfirmedAt: new Date() } })
   }
 

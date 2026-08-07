@@ -3,13 +3,16 @@ import { BadRequestException, ConflictException, Injectable } from '@nestjs/comm
 import { createHash } from 'node:crypto'
 
 import { PrismaService } from '../database/prisma.service'
+import { curriculumTargets, curriculumVersion } from '../learning/curriculum.data'
+
+const LESSON_STAGES = ['prepare', 'review', 'introduce', 'practice', 'finish'] as const
 
 type SyncOperation = {
   operationId: string
   kind: 'upsert-session' | 'upsert-observation' | 'delete-session'
   recordId: string
   baseVersion: number
-  payload?: { clientId: string; targetId: string; targetTitle?: string; sessionId?: string; outcome?: string; promptLevel?: string; materialVariant?: string; status?: string; startedAt?: string }
+  payload?: { clientId: string; targetId: string; targetTitle?: string; sessionId?: string; outcome?: string; promptLevel?: string; effectivePrompt?: string; materialVariant?: string; interestLevel?: string; fatigueLevel?: string; discomfort?: boolean; note?: string; status?: string; startedAt?: string }
 }
 
 @Injectable()
@@ -21,8 +24,16 @@ export class SyncService {
     if (!learner) throw new BadRequestException('尚未建立孩子学习身份')
     const publications = await this.prisma.publication.findMany({ where: { parentId, state: 'PUBLISHED', binding: { slot: { learnerEligible: true } } }, select: { id: true, versionId: true, snapshot: true } })
     const resources = publications.map((publication) => `/api/learner/family-content/${publication.id}/media`)
-    const identity = { curriculumVersion: '2026.08-original-v1', publications: publications.map(({ id, versionId }) => ({ id, versionId })) }
-    const payload = { curriculumVersion: identity.curriculumVersion, learnerId: learner.id, contents: ['core-curriculum', 'published-family-content'], resources, publications, sensitiveData: false }
+    const identity = { curriculumVersion, publications: publications.map(({ id, versionId }) => ({ id, versionId })) }
+    const payload = {
+      curriculumVersion,
+      learnerId: learner.id,
+      lessonStages: LESSON_STAGES,
+      targets: curriculumTargets,
+      resources: ['/learn', ...resources],
+      publications,
+      sensitiveData: false,
+    }
     const checksum = this.packageChecksum(payload)
     return { version: this.packageChecksum(identity).slice(0, 16), checksum, sizeBytes: Buffer.byteLength(JSON.stringify(payload)), payload }
   }
@@ -78,7 +89,7 @@ export class SyncService {
       } else if (operation.kind === 'upsert-observation' && operation.payload) {
         const observation = await tx.learningObservation.upsert({
           where: { clientId: operation.payload.clientId }, update: {},
-          create: { clientId: operation.payload.clientId, learnerId: learner.id, sessionId: operation.payload.sessionId ?? operation.recordId, targetId: operation.payload.targetId, outcome: operation.payload.outcome ?? 'not_observed', promptLevel: operation.payload.promptLevel ?? 'not_applicable', materialVariant: operation.payload.materialVariant ?? 'offline' },
+          create: { clientId: operation.payload.clientId, learnerId: learner.id, sessionId: operation.payload.sessionId ?? operation.recordId, targetId: operation.payload.targetId, outcome: operation.payload.outcome ?? 'not_observed', promptLevel: operation.payload.promptLevel ?? 'not_applicable', effectivePrompt: operation.payload.effectivePrompt, materialVariant: operation.payload.materialVariant ?? 'offline', interestLevel: operation.payload.interestLevel, fatigueLevel: operation.payload.fatigueLevel, discomfort: operation.payload.discomfort ?? false, note: operation.payload.note },
         })
         result = { observation, version, deleted: false }
       } else throw new BadRequestException('不支持的离线操作')

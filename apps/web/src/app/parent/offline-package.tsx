@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 
+import { clearLessonPackage, saveLessonPackage, type OfflineLessonPackage } from '@/lib/offline-queue'
+
 async function sha256Hex(body: ArrayBuffer) {
   const digest = await crypto.subtle.digest('SHA-256', body)
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
@@ -10,7 +12,7 @@ async function sha256Hex(body: ArrayBuffer) {
 export function OfflinePackage() {
   const [message, setMessage] = useState('')
   const [active, setActive] = useState(false)
-  const [manifest, setManifest] = useState<{ version: string; checksum: string; sizeBytes: number; payload?: { resources?: string[] } } | null>(null)
+  const [manifest, setManifest] = useState<{ version: string; checksum: string; sizeBytes: number; payload?: OfflineLessonPackage & { resources?: string[] } } | null>(null)
   async function prepare() {
     setMessage('正在准备离线包…')
     const response = await fetch('/api/sync/package', { credentials: 'include', cache: 'no-store' })
@@ -39,6 +41,7 @@ export function OfflinePackage() {
     registration.active?.postMessage({ type: 'ACTIVATE_PACKAGE', urls: ['/learn', ...(manifest.payload?.resources ?? [])], version: manifest.version }, [channel.port2])
     if (!await activated) { setMessage('离线包资源未能完整缓存，未完成激活。'); return }
     window.localStorage.setItem('family-english-package', manifest.version)
+    if (manifest.payload) await saveLessonPackage({ ...manifest.payload, version: manifest.version })
     setActive(true)
     setMessage('离线包已激活；敏感操作仍需联网。')
   }
@@ -46,6 +49,7 @@ export function OfflinePackage() {
     const registration = await navigator.serviceWorker.ready
     registration.active?.postMessage({ type: 'CLEAR_PACKAGE' })
     window.localStorage.removeItem('family-english-package')
+    await clearLessonPackage()
     setActive(false)
     setMessage('已清除本机离线包。')
   }
