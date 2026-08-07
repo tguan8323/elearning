@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-项目已经进入**首个产品闭环阶段**：需求与课程架构文档保持为实现依据，单仓库中已建立 Next.js 前端、NestJS 后端、共享 TypeScript 包、Prisma 数据层和本地基础设施，并提供预建家长账号的安全初始化与登录入口。正式教学功能仍在后续工单中实现。第一版只服务当前家庭中的一个孩子，不按公共教学平台设计。
+项目已经进入**首个产品闭环阶段**：需求与课程架构文档保持为实现依据，单仓库中已建立 Next.js 前端、NestJS 后端、共享 TypeScript 包、Prisma 数据层和本地基础设施，并提供预建家长账号的安全初始化与登录入口。核心身份、课程、家庭内容和离线包闭环已实现并通过自动化验收；发布前仍需完成真实家庭凭据验收、完整浏览器离线同步证据和基础音频资产版权确认。第一版只服务当前家庭中的一个孩子，不按公共教学平台设计。
 
 ## 核心原则
 
@@ -103,6 +103,7 @@ node scripts/generate-private-catalog.mjs "D:\path\to\English Learning"
 
 ## 文档
 
+- [零背景用户人工走查记录](docs/ACCEPTANCE_ZERO_BACKGROUND.md)
 - [领域词汇表](CONTEXT.md)
 - [产品需求](docs/PRODUCT_REQUIREMENTS.md)
 - [课程架构](docs/CURRICULUM_ARCHITECTURE.md)
