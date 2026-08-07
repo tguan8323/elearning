@@ -59,13 +59,15 @@ test.describe('synthetic authenticated family flow', () => {
     const versionId = asset.versions[0].id
     const uploaded = await page.request.post(`/api/family-content/versions/${versionId}/upload`, { data: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), headers: { 'content-type': 'image/png' } })
     expect(uploaded.ok()).toBeTruthy()
-    const bound = await page.request.post(`/api/family-content/versions/${versionId}/bind`, { data: { slotId: 'synthetic-learner-visual' } })
+    const bound = await page.request.post(`/api/family-content/versions/${versionId}/bind`, { data: { slotId: 'learner-visual' } })
     expect(bound.status(), await bound.text()).toBe(201)
     const binding = await bound.json() as { id: string }
+    const preview = await page.request.get(`/api/family-content/versions/${versionId}/preview`)
+    expect(preview.ok()).toBeTruthy()
     const blocked = await page.request.post(`/api/family-content/bindings/${binding.id}/publish`, { data: {} })
     expect(blocked.status()).toBe(400)
     const published = await page.request.post(`/api/family-content/bindings/${binding.id}/publish`, { data: { previewConfirmed: true } })
-    expect(published.ok()).toBeTruthy()
+    expect(published.ok(), await published.text()).toBeTruthy()
     const publication = await published.json() as { id: string }
     const withdrawn = await page.request.post(`/api/family-content/publications/${publication.id}/withdraw`, { data: {} })
     expect(withdrawn.ok()).toBeTruthy()

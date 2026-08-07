@@ -15,10 +15,9 @@ test-results/
 .DS_Store
 Thumbs.db
 
-# Local infrastructure data
-.data/
-uploads/
-backups/
+# Private family-owned learning material metadata and originals
+private-content/
+apps/api/data/
 
 # Local agent and IDE state
 .claude/

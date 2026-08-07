@@ -9,7 +9,9 @@ export type OfflineOperation = {
 
 type LocalRecord = { recordId: string; version: number; deleted: boolean; payload?: Record<string, unknown> }
 const DB_NAME = 'family-english-offline'
-const DB_VERSION = 1
+const DB_VERSION = 2
+
+export type OfflineLessonPackage = { version: string; curriculumVersion: string; lessonStages: string[]; targets: Array<{ id: string; title: string; parentScript: string[]; materials: string[]; prerequisiteIds: string[] }> }
 
 function requestResult<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -112,6 +114,28 @@ export async function resolveConflict(operationId: string, choice: 'server' | 'l
   db.close()
 }
 
+export async function saveLessonPackage(value: OfflineLessonPackage) {
+  const db = await openOfflineDatabase()
+  const tx = db.transaction('metadata', 'readwrite')
+  tx.objectStore('metadata').put(value, 'lesson-package')
+  await new Promise<void>((resolve, reject) => { tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error) })
+  db.close()
+}
+
+export async function readLessonPackage(): Promise<OfflineLessonPackage | null> {
+  const db = await openOfflineDatabase()
+  const value = await requestResult(db.transaction('metadata').objectStore('metadata').get('lesson-package')) as OfflineLessonPackage | undefined
+  db.close()
+  return value ?? null
+}
+
+export async function clearLessonPackage() {
+  const db = await openOfflineDatabase()
+  const tx = db.transaction('metadata', 'readwrite')
+  tx.objectStore('metadata').delete('lesson-package')
+  await new Promise<void>((resolve, reject) => { tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error) })
+  db.close()
+}
 export function createOperation(input: Omit<OfflineOperation, 'operationId' | 'createdAt'>): OfflineOperation {
   return { ...input, operationId: crypto.randomUUID(), createdAt: new Date().toISOString() }
 }

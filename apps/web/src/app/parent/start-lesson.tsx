@@ -2,11 +2,12 @@
 
 import { useState } from 'react'
 
-import { createOperation, saveRecordAndQueue } from '@/lib/offline-queue'
+import { createOperation, readLessonPackage, saveRecordAndQueue } from '@/lib/offline-queue'
 import { publishCastContent } from '../cast/casting-view'
 export function StartLesson({ target }: { target: { id: string; title: string; parentScript: string[]; materials: string[] } }) {
   const [step, setStep] = useState<number | null>(null)
   const [sessionId, setSessionId] = useState('')
+  const [lessonTarget, setLessonTarget] = useState(target)
   const [statusMessage, setStatusMessage] = useState('')
   const [interestLevel, setInterestLevel] = useState('not_observed')
   const [fatigueLevel, setFatigueLevel] = useState('not_observed')
@@ -14,7 +15,7 @@ export function StartLesson({ target }: { target: { id: string; title: string; p
   const [effectivePrompt, setEffectivePrompt] = useState('')
   const [note, setNote] = useState('')
   const stages = ['预告与准备', '回顾上一课', '引入一个新目标', '多方式练习', '明确结束']
-  const currentContent = step === null ? '' : target.parentScript[Math.min(step, target.parentScript.length - 1)]
+  const currentContent = step === null ? '' : lessonTarget.parentScript[Math.min(step, lessonTarget.parentScript.length - 1)]
 
   function cast(content: string) {
     publishCastContent({ sessionId, text: content })
@@ -23,19 +24,27 @@ export function StartLesson({ target }: { target: { id: string; title: string; p
   function advance() {
     const nextStep = Math.min((step ?? 0) + 1, 4)
     setStep(nextStep)
-    cast(target.parentScript[Math.min(nextStep, target.parentScript.length - 1)] ?? '')
+    cast(lessonTarget.parentScript[Math.min(nextStep, lessonTarget.parentScript.length - 1)] ?? '')
   }
 
   async function start() {
+    const offlinePackage = !navigator.onLine ? await readLessonPackage() : null
+    const offlineTarget = offlinePackage?.targets.find((item) => item.id === target.id)
+    if (!navigator.onLine && !offlineTarget) {
+      setStatusMessage('这节课尚未下载到本机，请联网准备离线教学包。')
+      return
+    }
+    const activeTarget = offlineTarget ?? target
     const clientId = crypto.randomUUID()
-    const payload = { clientId, targetId: target.id }
+    const payload = { clientId, targetId: activeTarget.id }
     let response: Response | null = null
     try { response = await fetch('/api/learning/sessions', { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) }) } catch { response = null }
+    setLessonTarget(activeTarget)
     if (response?.ok) {
       const body = await response.json() as { id: string }
       setSessionId(body.id)
       setStep(0)
-      publishCastContent({ sessionId: body.id, text: target.parentScript[0] ?? '' })
+      publishCastContent({ sessionId: body.id, text: activeTarget.parentScript[0] ?? '' })
     } else {
       setSessionId(clientId)
       setStep(0)
@@ -61,7 +70,7 @@ export function StartLesson({ target }: { target: { id: string; title: string; p
       const response = await fetch(`/api/learning/sessions/${sessionId}`, { method: 'PATCH', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status }) })
       if (!response.ok) throw new Error('offline')
     } catch {
-      await saveRecordAndQueue({ recordId: `${sessionId}:finish`, version: 0, deleted: false, payload: { clientId: `${sessionId}:finish`, sessionId, targetId: target.id, status } }, createOperation({ kind: 'upsert-session', recordId: sessionId, baseVersion: 0, payload: { clientId: `${sessionId}:finish`, targetId: target.id, status } }))
+      await saveRecordAndQueue({ recordId: sessionId, version: 0, deleted: false, payload: { clientId: sessionId, sessionId, targetId: target.id, status } }, createOperation({ kind: 'upsert-session', recordId: sessionId, baseVersion: 0, payload: { clientId: sessionId, targetId: target.id, status } }))
       setStatusMessage('结束状态已保存在本机，联网后会同步。')
     }
     publishCastContent({ sessionId, text: '' })
@@ -74,7 +83,7 @@ export function StartLesson({ target }: { target: { id: string; title: string; p
     <section className="lessonStep" aria-live="polite">
       <p className="eyebrow">第 {step + 1} 步 / 5</p>{statusMessage ? <p role="status">{statusMessage}</p> : null}
       <h3>{stages[step]}</h3>
-      <p>{step === 2 ? target.title : step === 4 ? 'Say: All done.' : currentContent}</p>
+      <p>{step === 2 ? lessonTarget.title : step === 4 ? 'Say: All done.' : currentContent}</p>
       <div className="lessonActions">
         <a className="buttonLink" href="/cast" target="_blank" rel="noreferrer" onClick={() => cast(currentContent ?? '')}>
           打开孩子画面

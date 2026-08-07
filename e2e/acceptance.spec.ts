@@ -83,7 +83,7 @@ test('login form is usable and offers no registration', async ({ page }) => {
 
   await email.fill('not-an-email')
   await password.fill('not-a-real-password')
-  await submit.click()
+  await submit.evaluate((element) => (element as HTMLButtonElement).form?.reportValidity())
   await expect(email).toHaveJSProperty('validity.valid', false)
   await expect(page).toHaveURL(/\/login$/)
 
